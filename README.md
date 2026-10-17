@@ -143,11 +143,33 @@ The check regenerates the patch in memory, compares it with the committed patch,
 
 Each integration edit uses an exact source match or a unique anchor with a bounded search. If an upstream upgrade breaks an anchor, review and update that edit before regenerating. The shared licence helper requires an explicit feature name at reviewed call sites. New upstream callers keep their licence checks.
 
-## Licence
+## Licence and patch scope
 
-Upstream LiteLLM outside `enterprise/` is MIT under its root licence. This repo contains patch sources, a generated patch, tests and a build workflow. It is not affiliated with or endorsed by BerriAI. Refer to the built image by this repo's name, not as "LiteLLM Enterprise".
+### Why the source changes fall within MIT
 
-Validation rejects patch targets outside `litellm/`, enterprise paths, and added direct or literal dynamic imports of `enterprise` / `litellm_enterprise`. This static check does not audit transitive imports or runtime behavior. Existing upstream enterprise integrations keep their checks. Preserve upstream licence notices when distributing images.
+The pinned upstream version is LiteLLM `v1.105.1` (commit `d665dc1a6315847fcad6cc2c1264ceb47c06abce`). Its [root licence](https://github.com/BerriAI/litellm/blob/d665dc1a6315847fcad6cc2c1264ceb47c06abce/LICENSE) explicitly separates content under `enterprise/`, which has its own licence, from the remaining content, which is MIT-licensed.
+
+The [MIT licence](https://opensource.org/license/mit) permits using, copying, modifying, publishing, distributing, sublicensing and selling the covered software. Its notice condition requires keeping the copyright and permission notices in copies or substantial portions. This project retains Berri AI's MIT notice in [LICENSE](LICENSE); distributions must also retain the applicable upstream and dependency notices.
+
+The generated patch changes Python files only under `litellm/`, outside the upstream enterprise exclusion. It makes selected licence checks configurable in those MIT-covered implementations and adds branding and documentation customisation. The MIT text does not require keeping those checks or buying a subscription to modify the MIT-covered code. A feature being marketed as enterprise does not, by itself, change the stated licence of its implementation. This is the basis for treating these source edits as permitted MIT modifications.
+
+### How the enterprise boundary is kept
+
+The patch does not edit, extract or relicense implementations under `enterprise/` or `litellm_enterprise`. It does not forge a licence, replace licence validation with a successful result, or set the global premium state. Feature-specific checks that protect separately licensed implementations remain in place. The `ui` switch affects UI visibility and does not grant permission to use every control the UI displays.
+
+`python scripts/apply_patch.py upstream --check` regenerates and validates the patch before application. It rejects targets outside `litellm/`, enterprise target paths, and added direct or literal dynamic imports of `enterprise` / `litellm_enterprise`. Scope tests exercise those rejection paths. These checks cover patch targets and newly added imports; they do not prove that all existing imports, transitive dependencies or runtime paths are enterprise-free. Recheck the licences and protected implementations when changing `UPSTREAM_REF`.
+
+### Source-patch scope is different from image licensing
+
+The upstream [Dockerfile](https://github.com/BerriAI/litellm/blob/d665dc1a6315847fcad6cc2c1264ceb47c06abce/Dockerfile) used by this workflow installs workspace packages and copies `enterprise/` into the runtime image. The patch does not remove those components. The resulting image must not be described as containing only MIT code.
+
+Those components remain governed by the separate [BerriAI Enterprise licence](https://github.com/BerriAI/litellm/blob/d665dc1a6315847fcad6cc2c1264ceb47c06abce/enterprise/LICENSE.md). That licence restricts production use and redistribution. MIT permission for the patched files does not grant rights to use or redistribute the enterprise components. Before distributing or deploying the full image, establish the required rights for those components or use a build that excludes them and verifies the remaining dependency paths. Passing the patch and image tests is a technical result, not evidence of those rights.
+
+### Other terms and attribution
+
+This rationale covers the source licences reviewed at the pinned commit. It is not a blanket statement that every deployment or image distribution breaches no terms. Separate agreements you have accepted, hosted-service terms, third-party licences and trademark rights still apply. The patch grants no access to paid hosted services, enterprise support or separately licensed software.
+
+`litellm-unlocked` is an independent patch project, not affiliated with or endorsed by BerriAI. Use this project's name for its images and preserve upstream licence notices. Do not present the patched build as an official LiteLLM Enterprise product.
 
 ## Upgrading
 
