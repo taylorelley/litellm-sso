@@ -33,7 +33,7 @@ The patch adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is m
 | Variable | Type | Default | Example | Effect |
 |---|---|---|---|---|
 | `BRAND_NAME` | string | unset | `Acme AI` | Product name in UI, server pages, emails and default API title |
-| `BRAND_TITLE` | string | <BRAND_NAME> Dashboard, otherwise stock | `AI Portal` | UI browser title; overrides name-derived title |
+| `BRAND_TITLE` | string | `<BRAND_NAME> Dashboard`, otherwise stock | `AI Portal` | UI browser title; overrides name-derived title |
 | `BRAND_DESCRIPTION` | string | stock description | `Internal AI gateway` | UI meta description |
 | `BRAND_DOCS_URL` | URL | upstream links | `https://wiki.example/ai` | Replace docs.litellm.ai links |
 | `BRAND_GITHUB_URL` | URL | upstream links | `https://git.example/ai` | Replace GitHub repository links |
@@ -50,7 +50,7 @@ The patch adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is m
 | `BRAND_CUSTOM_CSS_URL` | stylesheet URL | none | `https://cdn.example/brand.css` | Extra stylesheet loaded after inline overrides |
 | `BRAND_EMAIL_FOOTER` | HTML | stock footer | `<footer>Internal service</footer>` | Replace email footer; an explicitly empty value removes it |
 | `BRAND_PRESERVE_PHRASES` | pipe-separated strings | built-in protected phrases | `LiteLLM Proxy Server` | Extra exact phrases excluded from name replacement |
-| `DOCS_TITLE` | string | <BRAND_NAME> API, otherwise LiteLLM API | `Acme API` | OpenAPI and API documentation title |
+| `DOCS_TITLE` | string | `<BRAND_NAME> API`, otherwise LiteLLM API | `Acme API` | OpenAPI and API documentation title |
 | `DOCS_DESCRIPTION` | string | upstream description | `Internal model gateway` | API documentation description |
 | `DOCS_FILTERED` | exact string True or False | False | `True` | Remove admin routes from API docs; does not disable those routes |
 

@@ -96,12 +96,13 @@ class InstalledRuntimeTests(unittest.TestCase):
         with (
             patch.object(proxy_server, "premium_user", False),
             patch.object(audit_logs.litellm, "store_audit_logs", None),
-            patch.object(audit_logs, "get_secret_bool", return_value=None),
+            patch("litellm.secret_managers.main.get_secret_bool", return_value=None),
         ):
             for setting, enabled in (("", False), ("audit_logs", True), ("all", True)):
                 with patch.dict(os.environ, {"LITELLM_OSS_UNLOCK": setting}):
                     self.assertEqual(audit_logs.is_audit_logging_enabled(), enabled)
                     self.assertFalse(audit_logs.is_audit_logging_enabled(False))
+                    self.assertTrue(audit_logs.is_audit_logging_enabled(True))
 
     def test_unlocked_validation_still_validates(self):
         async def validator(payload):

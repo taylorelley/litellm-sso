@@ -126,7 +126,10 @@ jobs:
             io.litellm-sso.upstream-revision=${{ needs.validate.outputs.upstream_sha }}
             org.opencontainers.image.description=LiteLLM with configurable MIT-code features and branding
       - name: Smoke-test exact candidate image
-        run: python scripts/smoke_image.py litellm-sso:candidate --upstream upstream --logs smoke-logs
+        run: |
+          set -o pipefail
+          mkdir -p smoke-logs
+          python scripts/smoke_image.py litellm-sso:candidate --upstream upstream --logs smoke-logs 2>&1 | tee smoke-logs/checks.log
       - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
