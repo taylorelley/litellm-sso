@@ -285,3 +285,61 @@ def test_cache_respects_html_and_ui_context(monkeypatch, first):
     assert "brand-overrides" not in js
     assert "Acme &amp; Co" in login and "Acme &amp; Co" in ui
     assert "Acme & Co" in js
+
+
+@pytest.mark.parametrize("name", ['Acme "AI"', "Acme's AI", "${alert(1)}`\\\n", "</script><script>alert(1)</script>"])
+def test_branding_keeps_javascript_literals_valid(monkeypatch, name):
+    import json
+    import subprocess
+
+    config = cfg(monkeypatch, BRAND_NAME=name)
+    source = "const a=\"LiteLLM\";const b='LiteLLM';const c=`LiteLLM`;console.log(JSON.stringify([a,b,c]));"
+    rewritten = branding.brand_text(source, config, javascript=True)
+    result = subprocess.run(["node", "-e", rewritten], text=True, capture_output=True, check=True)
+    assert json.loads(result.stdout) == [name.strip(), name.strip(), name.strip()]
+    html = branding.brand_html_document(f"<head></head><script>{source}</script>", config, inject_head=True)
+    assert html.count("</script>") == 1
+    script = html.split("<script>", 1)[1].split("</script>", 1)[0]
+    result = subprocess.run(["node", "-e", script], text=True, capture_output=True, check=True)
+    assert json.loads(result.stdout) == [name.strip(), name.strip(), name.strip()]
+
+
+def test_dark_foreground_and_custom_variables(monkeypatch):
+    config = cfg(monkeypatch, BRAND_PRIMARY_FOREGROUND_DARK="#eee", BRAND_CSS_VARS_DARK="card=#123")
+    assert config.css_vars_dark["primary-foreground"] == "#eee"
+    assert config.css_vars_dark["card"] == "#123"
+    assert "--card:#123" in branding.build_head_injection(config)
+
+
+def test_email_footer(monkeypatch):
+    import types
+
+    footer = types.ModuleType("litellm.integrations.email_templates.email_footer")
+    footer.EMAIL_FOOTER = "<footer>stock</footer>"
+    monkeypatch.setitem(sys.modules, footer.__name__, footer)
+    cfg(monkeypatch, BRAND_NAME="Acme", BRAND_EMAIL_FOOTER="<footer>ours</footer>")
+    subject, body = branding.brand_email("LiteLLM alert", "<p>LiteLLM</p><footer>stock</footer>")
+    assert subject == "Acme alert"
+    assert body == "<p>Acme</p><footer>ours</footer>"
+    cfg(monkeypatch, BRAND_EMAIL_FOOTER="")
+    assert branding.brand_email("subject", "x<footer>stock</footer>") == ("subject", "x")
+    monkeypatch.delenv("BRAND_EMAIL_FOOTER")
+    cfg(monkeypatch)
+    assert branding.brand_email("subject", "x<footer>stock</footer>") == ("subject", "x<footer>stock</footer>")
+
+
+def test_middleware_large_or_encoded_response_is_unchanged(monkeypatch):
+    cfg(monkeypatch, BRAND_NAME="Acme")
+    monkeypatch.setattr(branding, "_MAX_BODY", 4)
+
+    async def large(request):
+        return Response(b"LiteLLM", media_type="text/html")
+
+    async def encoded(request):
+        return Response(b"LiteLLM", media_type="text/html", headers={"Content-Encoding": "identity"})
+
+    app = Starlette(routes=[Route("/ui/large", large), Route("/ui/encoded", encoded)])
+    app.add_middleware(branding.BrandingMiddleware)
+    with TestClient(app) as client:
+        for path in ("/ui/large", "/ui/encoded"):
+            assert client.get(path).content == b"LiteLLM"

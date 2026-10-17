@@ -33,6 +33,7 @@ LITELLM_FAVICON_URL and EMAIL_LOGO_URL.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 from collections import OrderedDict
@@ -215,24 +216,32 @@ def _is_bare_object_key(text: str, match: re.Match[str]) -> bool:
     return before.endswith(("{", ",")) and after.startswith(":")
 
 
-def brand_text(text: str, config: BrandingConfig | None = None, *, html: bool = False) -> str:
+def brand_text(text: str, config: BrandingConfig | None = None, *, html: bool = False, javascript: bool = False) -> str:
     """Apply name and link substitutions. Safe on HTML, JS, CSS and plain text."""
     config = config or get_branding()
     if not config.enabled:
         return text
 
+    def replacement(value: str) -> str:
+        if javascript:
+            encoded = json.dumps(value, ensure_ascii=True)[1:-1]
+            for char in "'`$<>":
+                encoded = encoded.replace(char, f"\\u{ord(char):04x}")
+            return encoded
+        return _html_attr(value) if html else value
+
     if config.docs_url:
-        text = _DOCS_URL_RE.sub(lambda _m: config.docs_url or "", text)
+        text = _DOCS_URL_RE.sub(lambda _m: replacement(config.docs_url or ""), text)
     if config.github_url:
-        text = _GITHUB_URL_RE.sub(lambda _m: config.github_url or "", text)
+        text = _GITHUB_URL_RE.sub(lambda _m: replacement(config.github_url or ""), text)
     if config.website_url:
-        text = _WEBSITE_URL_RE.sub(lambda _m: config.website_url or "", text)
+        text = _WEBSITE_URL_RE.sub(lambda _m: replacement(config.website_url or ""), text)
 
     if config.title:
-        title = _html_text(config.title) if html else config.title
+        title = replacement(config.title)
         text = text.replace("LiteLLM Dashboard", title)
     if config.description:
-        desc = _html_attr(config.description) if html else config.description
+        desc = replacement(config.description)
         text = text.replace("LiteLLM Proxy Admin UI", desc)
 
     if config.name and UPSTREAM_NAME in text:
@@ -242,7 +251,7 @@ def brand_text(text: str, config: BrandingConfig | None = None, *, html: bool = 
                 token = f"\x00BRANDKEEP{i}\x00"
                 placeholders[token] = phrase
                 text = text.replace(phrase, token)
-        name = _html_text(config.name) if html else config.name
+        name = replacement(config.name)
         text = _NAME_RE.sub(lambda m: m.group(0) if _is_bare_object_key(text, m) else name, text)
         for token, phrase in placeholders.items():
             text = text.replace(token, phrase)
@@ -275,7 +284,13 @@ def build_head_injection(config: BrandingConfig) -> str:
 
 def brand_html_document(text: str, config: BrandingConfig | None = None, *, inject_head: bool) -> str:
     config = config or get_branding()
-    text = brand_text(text, config, html=True)
+    parts = re.split(r"(<script\b[^>]*>)(.*?)(</script\s*>)", text, flags=re.IGNORECASE | re.DOTALL)
+    for i in range(len(parts)):
+        if i % 4 == 2:
+            parts[i] = brand_text(parts[i], config, javascript=True)
+        elif i % 4 != 3:
+            parts[i] = brand_text(parts[i], config, html=True)
+    text = "".join(parts)
     if inject_head:
         injection = build_head_injection(config)
         if injection and "</head>" in text and 'id="brand-overrides"' not in text:
@@ -403,7 +418,7 @@ class BrandingMiddleware:
                 if is_html:
                     text = brand_html_document(text, config, inject_head=_is_ui_path(path))
                 else:
-                    text = brand_text(text, config)
+                    text = brand_text(text, config, javascript="javascript" in content_type.lower())
                 new_body = text.encode("utf-8")
                 etag = f'"{hashlib.sha256(new_body).hexdigest()[:32]}"'
             self._cache[key] = (new_body, etag)
