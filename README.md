@@ -1,10 +1,13 @@
 # litellm-sso
 
-Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with one small change: the SSO user limit is read from an environment variable instead of being fixed at 5.
+Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with two changes, both configured by environment variables:
 
-## What the patch changes
+1. **SSO user limit**: read from `SSO_FREE_USER_LIMIT` instead of being fixed at 5.
+2. **Branding**: product name, titles, links, colours, fonts and custom CSS for the UI, server-rendered pages, emails and API docs.
 
-`patches/sso-user-limit.patch` edits `_raise_if_sso_exceeds_free_user_limit` in
+## 1. SSO user limit
+
+`patches/0001-sso-user-limit.patch` edits `_raise_if_sso_exceeds_free_user_limit` in
 `litellm/proxy/management_endpoints/ui_sso.py`, which is MIT-licensed code (outside `enterprise/`).
 
 | `SSO_FREE_USER_LIMIT` | Behaviour |
@@ -13,17 +16,47 @@ Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image wi
 | `N` | SSO allowed for up to N billable users |
 | `0` | No limit |
 
-Nothing else changes. The patch does not touch, import or enable anything under upstream's `enterprise/` directory (the build fails if it ever does). Do not enable the custom SSO handler (`custom_sso_handler`), which lives in enterprise-licensed code. The opt-in SSO debug endpoint keeps its upstream licence check.
+Do not enable the custom SSO handler (`custom_sso_handler`), which lives in enterprise-licensed code. The opt-in SSO debug endpoint keeps its upstream licence check.
+
+## 2. Branding
+
+`patches/0002-branding.patch` adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is modified: text responses are rewritten as they're served, so changing an env var and restarting changes the branding, and unsetting everything restores stock behaviour. With no `BRAND_*` variable set, the middleware is a pass-through.
+
+| Variable | Effect |
+|---|---|
+| `BRAND_NAME` | Replaces "LiteLLM" in the UI, sign-in and CLI auth pages, emails, and the API docs title |
+| `BRAND_TITLE` | Browser tab title (default `<BRAND_NAME> Dashboard`) |
+| `BRAND_DESCRIPTION` | UI meta description |
+| `BRAND_DOCS_URL` | Replaces links to docs.litellm.ai |
+| `BRAND_GITHUB_URL` | Replaces links to github.com/BerriAI/litellm |
+| `BRAND_WEBSITE_URL` | Replaces links to litellm.ai |
+| `BRAND_PRIMARY_COLOR` / `BRAND_PRIMARY_FOREGROUND` | Primary colour and the text on it (buttons, active nav, focus ring), light mode |
+| `BRAND_PRIMARY_COLOR_DARK` / `BRAND_PRIMARY_FOREGROUND_DARK` | Same for dark mode (default to the light values) |
+| `BRAND_CSS_VARS` / `BRAND_CSS_VARS_DARK` | Any UI theme variable, e.g. `sidebar=#f5f7fa;radius=0.25rem;background=#fff` |
+| `BRAND_FONT_FAMILY` / `BRAND_FONT_URL` | UI font, and a stylesheet to load it from |
+| `BRAND_CUSTOM_CSS` / `BRAND_CUSTOM_CSS_URL` | Extra CSS, inline or from a URL, for anything the variables don't cover |
+| `BRAND_EMAIL_FOOTER` | HTML replacing the default email footer; set to empty to remove it |
+| `BRAND_PRESERVE_PHRASES` | Extra `\|`-separated phrases containing "LiteLLM" to leave unchanged |
+| `DOCS_TITLE` / `DOCS_DESCRIPTION` / `DOCS_FILTERED` | API docs title, description, and hiding admin routes from the docs (no longer licence-gated) |
+
+Logos and favicon use upstream's existing variables, which already work without a licence: `UI_LOGO_PATH`, `UI_LOGO_PATH_DARK`, `LITELLM_FAVICON_URL` and `EMAIL_LOGO_URL`.
+
+UI theme variables you can set with `BRAND_CSS_VARS` include `background`, `foreground`, `card`, `primary`, `primary-foreground`, `secondary`, `muted`, `accent`, `border`, `input`, `ring`, `radius`, `sidebar`, `sidebar-foreground`, `sidebar-primary`, `sidebar-accent` and `chart-1` to `chart-5`. Colours accept any CSS value (`#0a5c8a`, `rgb(...)`, `oklch(...)`).
+
+**Deliberately left unchanged:**
+- Data values the UI compares against API responses ("LiteLLM Content Filter", "LiteLLM LLM as a Judge"), and "LiteLLM Enterprise" so licence messages stay accurate.
+- Internal identifiers such as `LiteLLM_TeamTable`, and API/JSON responses, logs and response headers.
+- Text that arrives from the API at runtime (for example guardrail provider names) still says LiteLLM.
 
 ## Licence
 
-Upstream LiteLLM outside `enterprise/` is MIT. This repo carries only the patch and build workflow. It is not affiliated with or endorsed by BerriAI; refer to the built image by this repo's name, not as "LiteLLM Enterprise".
+Upstream LiteLLM outside `enterprise/` is MIT. This repo carries only the patches, tests and build workflow. It is not affiliated with or endorsed by BerriAI; refer to the built image by this repo's name, not as "LiteLLM Enterprise". The build fails if a patch ever references `enterprise/` code.
 
 ## Upgrading
 
 1. Change `UPSTREAM_REF` to the new upstream tag and push.
-2. The workflow checks out that tag, applies the patch, and builds and pushes `ghcr.io/<owner>/litellm-sso:<tag>`.
-3. If upstream has moved or renamed the check, `git apply --check` fails the build. Regenerate the patch against the new tag.
+2. The workflow checks out that tag, applies the patches in order, runs the branding tests, and builds and pushes `ghcr.io/<owner>/litellm-sso:<tag>`.
+3. If upstream has moved the code a patch touches, `git apply --check` fails the build. Regenerate that patch against the new tag.
 
 You can also run the workflow manually with any upstream tag or commit.
 
@@ -41,4 +74,21 @@ services:
       GENERIC_TOKEN_ENDPOINT: ...
       GENERIC_USERINFO_ENDPOINT: ...
       PROXY_BASE_URL: https://llm.example.internal
+
+      BRAND_NAME: Acme AI
+      BRAND_DOCS_URL: https://wiki.example.internal/ai-gateway
+      BRAND_PRIMARY_COLOR: "#0a5c8a"
+      BRAND_PRIMARY_FOREGROUND: "#ffffff"
+      BRAND_PRIMARY_COLOR_DARK: "#4fb3e8"
+      BRAND_FONT_FAMILY: "'Source Sans 3', sans-serif"
+      BRAND_FONT_URL: https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap
+      UI_LOGO_PATH: https://cdn.example.internal/logo.svg
+      UI_LOGO_PATH_DARK: https://cdn.example.internal/logo-dark.svg
+      LITELLM_FAVICON_URL: https://cdn.example.internal/favicon.ico
+```
+
+## Tests
+
+```bash
+BRANDING_MODULE=path/to/patched/litellm/proxy/branding.py pytest tests/
 ```

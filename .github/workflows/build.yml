@@ -8,7 +8,7 @@ on:
         required: true
   push:
     branches: [main]
-    paths: [patches/**, UPSTREAM_REF, .github/workflows/build.yml]
+    paths: [patches/**, tests/**, UPSTREAM_REF, .github/workflows/build.yml]
 
 permissions:
   contents: read
@@ -43,6 +43,16 @@ jobs:
             git apply "$p"
           done
           grep -n "SSO_FREE_USER_LIMIT" litellm/proxy/management_endpoints/ui_sso.py
+          grep -n "BrandingMiddleware" litellm/proxy/proxy_server.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test branding module
+        run: |
+          pip install -q starlette httpx pytest
+          BRANDING_MODULE=upstream/litellm/proxy/branding.py python -m pytest -q tests
 
       - name: Ensure no enterprise/ code is imported by the patch
         run: |
@@ -69,4 +79,4 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=LiteLLM ${{ steps.ref.outputs.ref }} with configurable SSO user limit
+            org.opencontainers.image.description=LiteLLM ${{ steps.ref.outputs.ref }} with configurable SSO user limit and env-var branding
