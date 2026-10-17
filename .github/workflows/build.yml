@@ -1,0 +1,72 @@
+name: Build patched LiteLLM image
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: "Upstream LiteLLM tag or commit (e.g. v1.105.1)"
+        required: true
+  push:
+    branches: [main]
+    paths: [patches/**, UPSTREAM_REF, .github/workflows/build.yml]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve upstream ref
+        id: ref
+        run: |
+          REF="${{ github.event.inputs.upstream_ref }}"
+          [ -z "$REF" ] && REF="$(tr -d '[:space:]' < UPSTREAM_REF)"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Check out upstream LiteLLM
+        uses: actions/checkout@v4
+        with:
+          repository: BerriAI/litellm
+          ref: ${{ steps.ref.outputs.ref }}
+          path: upstream
+
+      - name: Apply patches (fails loudly if upstream moved the code)
+        working-directory: upstream
+        run: |
+          for p in ../patches/*.patch; do
+            echo "Applying $p"
+            git apply --check "$p"
+            git apply "$p"
+          done
+          grep -n "SSO_FREE_USER_LIMIT" litellm/proxy/management_endpoints/ui_sso.py
+
+      - name: Ensure no enterprise/ code is imported by the patch
+        run: |
+          if grep -E "^\+.*(litellm_enterprise|enterprise/)" patches/*.patch; then
+            echo "Patch references enterprise-licensed code"; exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: upstream
+          file: upstream/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.ref.outputs.ref }}
+            ghcr.io/${{ github.repository }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=LiteLLM ${{ steps.ref.outputs.ref }} with configurable SSO user limit
