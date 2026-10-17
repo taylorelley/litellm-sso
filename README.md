@@ -1,32 +1,80 @@
-# litellm-sso
+# litellm-unlocked
 
-Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with one generated patch. Runtime changes are configured by environment variables:
+[LiteLLM](https://github.com/BerriAI/litellm) proxy images with configurable access to 30 licence-gated capabilities implemented in MIT-licensed code, plus UI, email and API documentation customisation. One generated patch applies the changes to a pinned upstream version.
 
-1. **SSO user limit**: read from `SSO_FREE_USER_LIMIT` instead of being fixed at 5.
-2. **Branding**: product name, titles, links, colours, fonts and custom CSS for the UI, server-rendered pages, emails and API docs.
-3. **Licence-gated features in MIT code**: opt in per feature with `LITELLM_OSS_UNLOCK`.
+Choose individual features with `LITELLM_OSS_UNLOCK`, or use `all`. SSO is one of the supported features alongside authentication, access controls, teams, organizations, budgets, routing, logging and secret-manager integrations. With no patch settings, upstream behaviour is preserved.
 
-## 1. SSO user limit
+## What the patches add
 
-`LITELLM_OSS_UNLOCK=sso` removes the billable-user cap for built-in SSO providers. `all` includes SSO. The original `SSO_FREE_USER_LIMIT` setting is still supported and takes priority when set. The database requirement and the premium-user bypass stay as upstream.
-
-| `SSO_FREE_USER_LIMIT` | Behaviour |
+| Area | Unlocked or enhanced functionality |
 |---|---|
-| unset | 5 users, or unlimited when `sso` / `all` is unlocked |
-| `N` | SSO allowed for up to N billable users |
-| `0` | No limit |
-| negative, empty or invalid | Configuration error, never silently unlimited |
+| Authentication and access | JWT and OAuth2 validation, MCP token exchange, built-in SSO without the default user cap, IP allowlists and route controls |
+| Teams, organizations and keys | Organization endpoints, team admins, team-scoped models, virtual-key regeneration and additional key/team/project settings |
+| Budgets and usage | Per-model budgets, tag budgets, spend reports and priority-based TPM/RPM reservation |
+| Routing and request controls | Auto-router limits, wildcard model-access groups, required parameters, request/response/file size limits and per-request guardrail parameters |
+| Operations and integrations | Management audit logs, model audit fields, worker registry, cloud logging destinations, secret managers, fine-tuning endpoints, custom metadata validation and per-request callback disabling |
+| UI, emails and API docs | Admin UI feature visibility, product names, titles, links, light/dark themes, fonts, CSS, email footers, alert-email customisation and API docs titles, descriptions and route filtering |
+
+These are targeted changes to MIT-licensed implementations. Unlocking a feature still requires its upstream configuration, credentials, permissions and dependencies. Separately licensed enterprise implementations retain their checks; see the scope below.
+
+## Feature switches
+
+```bash
+# Enable selected capabilities:
+LITELLM_OSS_UNLOCK=jwt_auth,organizations,audit_logs,tag_budgets,ui
+
+# Enable all 30 feature switches:
+LITELLM_OSS_UNLOCK=all
+```
 
 | Variable | Type | Default | Example | Effect |
 |---|---|---|---|---|
-| `LITELLM_OSS_UNLOCK` | comma-separated feature names | unset, all gates locked | `sso,audit_logs` | Enable listed MIT-code features; `all` includes every name in the feature table |
-| `SSO_FREE_USER_LIMIT` | non-negative integer | 5, or 0 with sso/all unlocked | `20` | Explicit value overrides sso/all; 0 is unlimited |
+| `LITELLM_OSS_UNLOCK` | comma-separated feature names | unset, all gates locked | `jwt_auth,audit_logs,organizations` | Enable listed MIT-code features; `all` includes every name in the feature table |
 
-Feature names ignore case and surrounding spaces. Unknown names produce a startup warning and remain disabled. Unlocking a feature does not configure it: upstream settings, credentials, permissions and dependencies still apply. The global premium/licence state is not changed.
+Feature names ignore case and surrounding spaces. Unknown names produce a startup warning and remain disabled. The switch is read at call time, including values supplied through the proxy config's `environment_variables`. It does not change the global premium/licence state or configure the features for you.
 
-Do not enable the custom SSO handler (`custom_sso_handler`), which lives in enterprise-licensed code. The opt-in SSO debug endpoint keeps its upstream licence check.
+### Complete feature catalogue
 
-## 2. Branding
+| Feature | What it enables |
+|---|---|
+| `admin_only_routes` | `general_settings.admin_only_routes` |
+| `allowed_ips` | `general_settings.allowed_ips` |
+| `allowed_routes` | `general_settings.allowed_routes` and extra public routes |
+| `audit_logs` | Audit logs for management changes |
+| `auto_router` | Unlimited auto-routers per classifier/customisation capability |
+| `custom_team_metadata_validation` | `general_settings.custom_team_metadata_validate` |
+| `dynamic_callback_disabling` | Disabling callbacks per request |
+| `email_customization` | Custom logo and support contact in alert emails |
+| `enforced_params` | `general_settings.enforced_params` |
+| `fine_tuning` | `/fine_tuning` endpoints |
+| `guardrail_dynamic_params` | Per-request guardrail `extra_body` |
+| `jwt_auth` | JWT auth for the proxy and MCP token exchange |
+| `key_rotation` | Regenerating virtual keys |
+| `key_team_settings` | Guardrails, policies, tags, prompts, logging, secret manager settings, passthrough routes and key duration on keys/teams/projects |
+| `logging_destinations` | GCS bucket, GCS Pub/Sub and Azure Blob logging |
+| `model_access_groups` | Model access groups on wildcard routes |
+| `model_audit_fields` | created/updated by/at on model info |
+| `model_max_budget` | Per-model budgets on keys and teams |
+| `oauth2_auth` | OAuth2 token validation |
+| `organizations` | `/organization` endpoints |
+| `priority_reservation` | TPM/RPM reservation by priority (`litellm_settings.priority_reservation`) |
+| `request_size_limits` | `max_request_size_mb`, `max_response_size_mb`, `max_file_size_mb` |
+| `secret_managers` | AWS KMS v2, Google, HashiCorp and CyberArk secret managers |
+| `sso` | Unlimited users for built-in SSO providers |
+| `spend_reports` | `/global/spend/report` and the `get_spend_routes` key permission |
+| `tag_budgets` | Budgets per request tag |
+| `team_admins` | Team admin role |
+| `team_models` | Team-scoped models |
+| `ui` | Shows licence-gated features in the admin UI |
+| `worker_registry` | `general_settings.worker_registry` |
+
+### Scope and limits
+
+**Not unlockable (enterprise-licensed code):** Llama Guard, LLM Guard, secret detection, OpenAI and Google text moderation, blocked-user lists and banned keywords (all loaded from `enterprise/` or `litellm_enterprise`), tag-based guardrail modes, the custom SSO handler, enterprise email senders and the enterprise key/route hooks. Their checks are untouched. With `ui` unlocked the admin UI may still show some of these; using them fails with upstream's licence error.
+
+**Not changed:** the licence health endpoint still reports `community`, and user/team count limits only apply to signed licences, so they never block without one.
+
+## Branding and API documentation
 
 The patch adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is modified: text responses are rewritten as they're served, so changing an env var and restarting changes the branding, and unsetting everything restores stock behaviour. With no `BRAND_*` variable set, the middleware is a pass-through. Whitespace-only branding values are treated as unset, except `BRAND_EMAIL_FOOTER`, where an empty value removes the footer. CSS values containing `<` are rejected. Set these values in the container environment and restart after changes. Branding settings are cached after first use; the unlock switch and SSO limit are read at call time. API docs settings are read during module import, so set them before startup rather than in YAML `environment_variables`.
 
@@ -63,53 +111,22 @@ UI theme variables you can set with `BRAND_CSS_VARS` include `background`, `fore
 - Internal identifiers such as `LiteLLM_TeamTable`, and API/JSON responses, logs and response headers.
 - Text that arrives from the API at runtime (for example guardrail provider names) still says LiteLLM.
 
-## 3. Licence-gated features in MIT code
+## Built-in SSO user limits
 
-The patch adds `litellm/proxy/oss_unlock.py` and makes the audited licence checks in MIT-licensed code opt-in per feature:
+`LITELLM_OSS_UNLOCK=sso` removes the billable-user cap for built-in SSO providers. `all` includes SSO. The original `SSO_FREE_USER_LIMIT` setting is still supported and takes priority when set. The database requirement and the premium-user bypass stay as upstream.
 
-```
-LITELLM_OSS_UNLOCK=jwt_auth,audit_logs,priority_reservation,ui   # specific features
-LITELLM_OSS_UNLOCK=all                                            # everything below
-```
-
-With no unlock, SSO limit or branding settings, upstream behavior is preserved. Misspelt names are ignored with a warning at startup.
-
-| Feature | What it enables |
+| `SSO_FREE_USER_LIMIT` | Behaviour |
 |---|---|
-| `admin_only_routes` | `general_settings.admin_only_routes` |
-| `allowed_ips` | `general_settings.allowed_ips` |
-| `allowed_routes` | `general_settings.allowed_routes` and extra public routes |
-| `audit_logs` | Audit logs for management changes |
-| `auto_router` | Unlimited auto-routers per classifier/customisation capability |
-| `custom_team_metadata_validation` | `general_settings.custom_team_metadata_validate` |
-| `dynamic_callback_disabling` | Disabling callbacks per request |
-| `email_customization` | Custom logo and support contact in alert emails |
-| `enforced_params` | `general_settings.enforced_params` |
-| `fine_tuning` | `/fine_tuning` endpoints |
-| `guardrail_dynamic_params` | Per-request guardrail `extra_body` |
-| `jwt_auth` | JWT auth for the proxy and MCP token exchange |
-| `key_rotation` | Regenerating virtual keys |
-| `key_team_settings` | Guardrails, policies, tags, prompts, logging, secret manager settings, passthrough routes and key duration on keys/teams/projects |
-| `logging_destinations` | GCS bucket, GCS Pub/Sub and Azure Blob logging |
-| `model_access_groups` | Model access groups on wildcard routes |
-| `model_audit_fields` | created/updated by/at on model info |
-| `model_max_budget` | Per-model budgets on keys and teams |
-| `oauth2_auth` | OAuth2 token validation |
-| `organizations` | `/organization` endpoints |
-| `priority_reservation` | TPM/RPM reservation by priority (`litellm_settings.priority_reservation`) |
-| `request_size_limits` | `max_request_size_mb`, `max_response_size_mb`, `max_file_size_mb` |
-| `secret_managers` | AWS KMS v2, Google, HashiCorp and CyberArk secret managers |
-| `sso` | Unlimited users for built-in SSO providers |
-| `spend_reports` | `/global/spend/report` and the `get_spend_routes` key permission |
-| `tag_budgets` | Budgets per request tag |
-| `team_admins` | Team admin role |
-| `team_models` | Team-scoped models |
-| `ui` | Shows licence-gated features in the admin UI |
-| `worker_registry` | `general_settings.worker_registry` |
+| unset | 5 users, or unlimited when `sso` / `all` is unlocked |
+| `N` | SSO allowed for up to N billable users |
+| `0` | No limit |
+| negative, empty or invalid | Configuration error, never silently unlimited |
 
-**Not unlockable (enterprise-licensed code):** Llama Guard, LLM Guard, secret detection, OpenAI and Google text moderation, blocked-user lists and banned keywords (all loaded from `enterprise/` or `litellm_enterprise`), tag-based guardrail modes, the custom SSO handler, enterprise email senders and the enterprise key/route hooks. Their checks are untouched. With `ui` unlocked the admin UI may still show some of these; using them fails with upstream's licence error.
+| Variable | Type | Default | Example | Effect |
+|---|---|---|---|---|
+| `SSO_FREE_USER_LIMIT` | non-negative integer | 5, or 0 with sso/all unlocked | `20` | Explicit value overrides sso/all; 0 is unlimited |
 
-**Not changed:** the licence health endpoint still reports `community`, and user/team count limits only apply to signed licences, so they never block without one.
+The database requirement and premium-user bypass remain as upstream. The custom SSO handler (`custom_sso_handler`) lives in enterprise-licensed code and is not unlocked. The opt-in SSO debug endpoint retains its upstream licence check.
 
 ## Patch maintenance
 
@@ -126,11 +143,33 @@ The check regenerates the patch in memory, compares it with the committed patch,
 
 Each integration edit uses an exact source match or a unique anchor with a bounded search. If an upstream upgrade breaks an anchor, review and update that edit before regenerating. The shared licence helper requires an explicit feature name at reviewed call sites. New upstream callers keep their licence checks.
 
-## Licence
+## Licence and patch scope
 
-Upstream LiteLLM outside `enterprise/` is MIT under its root licence. This repo contains patch sources, a generated patch, tests and a build workflow. It is not affiliated with or endorsed by BerriAI. Refer to the built image by this repo's name, not as "LiteLLM Enterprise".
+### Why the source changes fall within MIT
 
-Validation rejects patch targets outside `litellm/`, enterprise paths, and added direct or literal dynamic imports of `enterprise` / `litellm_enterprise`. This static check does not audit transitive imports or runtime behavior. Existing upstream enterprise integrations keep their checks. Preserve upstream licence notices when distributing images.
+The pinned upstream version is LiteLLM `v1.105.1` (commit `d665dc1a6315847fcad6cc2c1264ceb47c06abce`). Its [root licence](https://github.com/BerriAI/litellm/blob/d665dc1a6315847fcad6cc2c1264ceb47c06abce/LICENSE) explicitly separates content under `enterprise/`, which has its own licence, from the remaining content, which is MIT-licensed.
+
+The [MIT licence](https://opensource.org/license/mit) permits using, copying, modifying, publishing, distributing, sublicensing and selling the covered software. Its notice condition requires keeping the copyright and permission notices in copies or substantial portions. This project retains Berri AI's MIT notice in [LICENSE](LICENSE); distributions must also retain the applicable upstream and dependency notices.
+
+The generated patch changes Python files only under `litellm/`, outside the upstream enterprise exclusion. It makes selected licence checks configurable in those MIT-covered implementations and adds branding and documentation customisation. The MIT text does not require keeping those checks or buying a subscription to modify the MIT-covered code. A feature being marketed as enterprise does not, by itself, change the stated licence of its implementation. This is the basis for treating these source edits as permitted MIT modifications.
+
+### How the enterprise boundary is kept
+
+The patch does not edit, extract or relicense implementations under `enterprise/` or `litellm_enterprise`. It does not forge a licence, replace licence validation with a successful result, or set the global premium state. Feature-specific checks that protect separately licensed implementations remain in place. The `ui` switch affects UI visibility and does not grant permission to use every control the UI displays.
+
+`python scripts/apply_patch.py upstream --check` regenerates and validates the patch before application. It rejects targets outside `litellm/`, enterprise target paths, and added direct or literal dynamic imports of `enterprise` / `litellm_enterprise`. Scope tests exercise those rejection paths. These checks cover patch targets and newly added imports; they do not prove that all existing imports, transitive dependencies or runtime paths are enterprise-free. Recheck the licences and protected implementations when changing `UPSTREAM_REF`.
+
+### Source-patch scope is different from image licensing
+
+The upstream [Dockerfile](https://github.com/BerriAI/litellm/blob/d665dc1a6315847fcad6cc2c1264ceb47c06abce/Dockerfile) used by this workflow installs workspace packages and copies `enterprise/` into the runtime image. The patch does not remove those components. The resulting image must not be described as containing only MIT code.
+
+Those components remain governed by the separate [BerriAI Enterprise licence](https://github.com/BerriAI/litellm/blob/d665dc1a6315847fcad6cc2c1264ceb47c06abce/enterprise/LICENSE.md). That licence restricts production use and redistribution. MIT permission for the patched files does not grant rights to use or redistribute the enterprise components. Before distributing or deploying the full image, establish the required rights for those components or use a build that excludes them and verifies the remaining dependency paths. Passing the patch and image tests is a technical result, not evidence of those rights.
+
+### Other terms and attribution
+
+This rationale covers the source licences reviewed at the pinned commit. It is not a blanket statement that every deployment or image distribution breaches no terms. Separate agreements you have accepted, hosted-service terms, third-party licences and trademark rights still apply. The patch grants no access to paid hosted services, enterprise support or separately licensed software.
+
+`litellm-unlocked` is an independent patch project, not affiliated with or endorsed by BerriAI. Use this project's name for its images and preserve upstream licence notices. Do not present the patched build as an official LiteLLM Enterprise product.
 
 ## Upgrading
 
@@ -147,36 +186,38 @@ python -m pytest -q tests
 
 Commit the source changes, `UPSTREAM_REF` and regenerated patch together. Pull requests validate the patch, run tests on Python 3.12 and 3.13, then build and smoke-test a candidate image without publishing. Main-branch pushes and manual runs use the same checks. Publishing tags happens only after that exact image ID passes smoke tests. A failed build, import, UI syntax check, runtime test or HTTP smoke test blocks publishing.
 
-Images receive the upstream tag and an upstream-tag plus patch-commit tag. `latest` changes only for main-branch builds using `UPSTREAM_REF`. A manual run may specify another upstream ref, but its generated patch must still match. Regenerate and commit it first when upstream code differs.
+Images receive `<sanitized-upstream-ref>-<ref-hash>` and `<sanitized-upstream-ref>-<ref-hash>-<build-sha>` tags. The ref hash is the first 16 hex characters of SHA-256 of the original ref; the build suffix is the first 12 characters of the project commit SHA. Long ref names are shortened to keep tags within 128 characters. Distinct refs that sanitize to the same name retain different ref hashes. `latest` changes only for main-branch builds using `UPSTREAM_REF`. A manual run may specify another upstream ref, but its generated patch must still match. Regenerate and commit it first when upstream code differs.
 
 ## Use
+
+The workflow publishes `ghcr.io/taylorelley/litellm-unlocked` after a successful main-branch build. Select a tested tag or digest for deployment; `latest` follows the pinned upstream version. Renaming the repository does not move existing packages published under the old image name.
+
+Add these settings to your existing LiteLLM Compose service. Keep your upstream model configuration, authentication settings and database connection as needed by the features you choose.
 
 ```yaml
 services:
   litellm:
-    image: ghcr.io/<owner>/litellm-sso:v1.105.1
+    image: ghcr.io/taylorelley/litellm-unlocked:latest
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
     environment:
-      LITELLM_OSS_UNLOCK: sso
-      # Optional finite cap, even with sso/all enabled:
-      # SSO_FREE_USER_LIMIT: "20"
-      GENERIC_CLIENT_ID: ...
-      GENERIC_CLIENT_SECRET: ...
-      GENERIC_AUTHORIZATION_ENDPOINT: ...
-      GENERIC_TOKEN_ENDPOINT: ...
-      GENERIC_USERINFO_ENDPOINT: ...
-      PROXY_BASE_URL: https://llm.example.internal
-
+      LITELLM_OSS_UNLOCK: jwt_auth,organizations,audit_logs,tag_budgets,ui
+      # Or enable every listed feature:
+      # LITELLM_OSS_UNLOCK: all
       BRAND_NAME: Acme AI
       BRAND_DOCS_URL: https://wiki.example.internal/ai-gateway
       BRAND_PRIMARY_COLOR: "#0a5c8a"
       BRAND_PRIMARY_FOREGROUND: "#ffffff"
       BRAND_PRIMARY_COLOR_DARK: "#4fb3e8"
-      BRAND_FONT_FAMILY: "'Source Sans 3', sans-serif"
-      BRAND_FONT_URL: https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap
-      UI_LOGO_PATH: https://cdn.example.internal/logo.svg
-      UI_LOGO_PATH_DARK: https://cdn.example.internal/logo-dark.svg
-      LITELLM_FAVICON_URL: https://cdn.example.internal/favicon.ico
+      DOCS_TITLE: Acme AI Gateway API
+      DOCS_DESCRIPTION: Internal model gateway
+      DOCS_FILTERED: "True"
 ```
+
+The switches remove the reviewed licence gates. Configure the corresponding upstream settings separately, such as JWT validation, audit storage, budgets or your SSO provider. To include unlimited built-in SSO, add `sso` or use `all`; set `SSO_FREE_USER_LIMIT` only if you want an explicit cap.
 
 ## Tests
 
@@ -192,7 +233,7 @@ Unit tests exercise all audited gate sites with locked, selective, unrelated and
 The candidate-image tests verify the installed bytes and import every patched module, parse rewritten JavaScript from the actual built UI, and run installed SSO, organization, audit and shared-gate checks. HTTP smoke tests start the stock, SSO-enabled and all-features-plus-branding configurations. They check readiness, liveness, authentication, model listing, a mock completion, SSE streaming, API docs, UI, compression and asset serving. No external model credentials are needed.
 
 ```bash
-python scripts/smoke_image.py litellm-sso:candidate --upstream upstream --logs smoke-logs
+python scripts/smoke_image.py litellm-unlocked:candidate --upstream upstream --logs smoke-logs
 ```
 
 Test tooling variables are `BRANDING_MODULE` (default `upstream/litellm/proxy/branding.py`) and `OSS_UNLOCK_MODULE` (default `upstream/litellm/proxy/oss_unlock.py`). They select files for unit tests and are not image runtime settings. CI's `REQUESTED_REF`, `IMAGE_REPOSITORY`, `TESTED_IMAGE_ID` and `IMAGE_TAGS` are internal workflow values, not proxy settings. The smoke harness uses upstream's `LITELLM_LOCAL_MODEL_COST_MAP=True` to avoid fetching prices.
