@@ -1,31 +1,60 @@
-name: Build patched LiteLLM image
+name: Validate and build patched LiteLLM
 
 on:
+  pull_request:
+    paths: [patches/**, tests/**, scripts/**, README.md, requirements-test.txt, UPSTREAM_REF, .github/workflows/build.yml]
+  push:
+    branches: [main]
+    paths: [patches/**, tests/**, scripts/**, README.md, requirements-test.txt, UPSTREAM_REF, .github/workflows/build.yml]
   workflow_dispatch:
     inputs:
       upstream_ref:
-        description: "Upstream LiteLLM tag or commit (e.g. v1.105.1)"
-        required: true
-  push:
-    branches: [main]
-    paths: [patches/**, tests/**, scripts/**, UPSTREAM_REF, .github/workflows/build.yml]
+        description: "Upstream LiteLLM tag or commit (blank uses UPSTREAM_REF)"
+        required: false
+        type: string
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  build:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
     runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.ref.outputs.ref }}
+      tags: ${{ steps.ref.outputs.tags }}
+      upstream_sha: ${{ steps.upstream.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Resolve upstream ref
+      - name: Resolve upstream ref and image tags
         id: ref
+        env:
+          REQUESTED_REF: ${{ inputs.upstream_ref }}
+          IMAGE_REPOSITORY: ${{ github.repository }}
         run: |
-          REF="${{ github.event.inputs.upstream_ref }}"
-          [ -z "$REF" ] && REF="$(tr -d '[:space:]' < UPSTREAM_REF)"
-          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import hashlib, os, re
+          from pathlib import Path
+          default = Path("UPSTREAM_REF").read_text().strip()
+          ref = os.environ.get("REQUESTED_REF") or default
+          if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,126}", ref):
+              raise SystemExit("Invalid upstream ref")
+          tag = re.sub(r"[^A-Za-z0-9_.-]", "-", ref)
+          ref_hash = hashlib.sha256(ref.encode()).hexdigest()[:16]
+          tag = f"{tag[:98]}-{ref_hash}"
+          image = "ghcr.io/" + os.environ["IMAGE_REPOSITORY"].lower()
+          tags = [f"{image}:{tag}", f"{image}:{tag}-{os.environ['GITHUB_SHA'][:12]}"]
+          if ref == default and os.environ["GITHUB_REF"] == "refs/heads/main":
+              tags.append(f"{image}:latest")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"ref={ref}\ntags={','.join(tags)}\n")
+          PY
 
       - name: Check out upstream LiteLLM
         uses: actions/checkout@v4
@@ -34,51 +63,93 @@ jobs:
           ref: ${{ steps.ref.outputs.ref }}
           path: upstream
 
-      - name: Apply patches (fails loudly if upstream moved the code)
-        working-directory: upstream
-        run: |
-          for p in ../patches/*.patch; do
-            echo "Applying $p"
-            git apply --check "$p"
-            git apply "$p"
-          done
-          grep -n "SSO_FREE_USER_LIMIT" litellm/proxy/management_endpoints/ui_sso.py
-          grep -n "BrandingMiddleware" litellm/proxy/proxy_server.py
-          grep -n "_premium_or_unlocked" litellm/proxy/proxy_server.py
+      - name: Record resolved upstream commit
+        id: upstream
+        run: echo "sha=$(git -C upstream rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
 
-      - name: Test branding module
+      - name: Validate generated patch and apply it
         run: |
-          pip install -q starlette httpx pytest
-          BRANDING_MODULE=upstream/litellm/proxy/branding.py OSS_UNLOCK_MODULE=upstream/litellm/proxy/oss_unlock.py python -m pytest -q tests
+          python scripts/apply_patch.py upstream --check
+          git -C upstream diff --exit-code
+          python scripts/apply_patch.py upstream
 
-      - name: Ensure no enterprise/ code is imported by the patch
-        run: |
-          # Any added import of enterprise-licensed code fails the build.
-          if grep -E "^\+\s*(from|import)\s+(litellm_enterprise|enterprise)\b|^\+.*from litellm\.proxy import enterprise" patches/*.patch; then
-            echo "Patch imports enterprise-licensed code"; exit 1
-          fi
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
+      - uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          node-version: "22"
 
-      - name: Build and push
+      - name: Test patched runtime modules and patch tooling
+        env:
+          BRANDING_MODULE: upstream/litellm/proxy/branding.py
+          OSS_UNLOCK_MODULE: upstream/litellm/proxy/oss_unlock.py
+        run: |
+          pip install -q -r requirements-test.txt
+          python -m pytest -q tests
+
+  image:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: BerriAI/litellm
+          ref: ${{ needs.validate.outputs.upstream_sha }}
+          path: upstream
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python scripts/apply_patch.py upstream
+      - name: Free space for the upstream build
+        run: sudo rm -rf /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: docker/setup-buildx-action@v3
+      - name: Build candidate without publishing
+        id: candidate
         uses: docker/build-push-action@v6
         with:
           context: upstream
           file: upstream/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.ref.outputs.ref }}
-            ghcr.io/${{ github.repository }}:latest
+          load: true
+          push: false
+          tags: litellm-sso:candidate
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=LiteLLM ${{ steps.ref.outputs.ref }} with configurable SSO user limit and env-var branding
+            org.opencontainers.image.revision=${{ github.sha }}
+            io.litellm-sso.upstream-revision=${{ needs.validate.outputs.upstream_sha }}
+            org.opencontainers.image.description=LiteLLM with configurable MIT-code features and branding
+      - name: Smoke-test exact candidate image
+        run: |
+          set -o pipefail
+          mkdir -p smoke-logs
+          python scripts/smoke_image.py litellm-sso:candidate --upstream upstream --logs smoke-logs 2>&1 | tee smoke-logs/checks.log
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: smoke-logs/
+          if-no-files-found: ignore
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the tested image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          TESTED_IMAGE_ID: ${{ steps.candidate.outputs.imageid }}
+          IMAGE_TAGS: ${{ needs.validate.outputs.tags }}
+        run: python scripts/publish_image.py --image-id "$TESTED_IMAGE_ID" --tags "$IMAGE_TAGS" --receipt smoke-logs/tested-image-id.txt

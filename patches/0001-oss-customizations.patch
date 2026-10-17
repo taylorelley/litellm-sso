@@ -1,13 +1,12 @@
 diff --git a/litellm/integrations/SlackAlerting/slack_alerting.py b/litellm/integrations/SlackAlerting/slack_alerting.py
-index 6ff048c..03ac42e 100644
 --- a/litellm/integrations/SlackAlerting/slack_alerting.py
 +++ b/litellm/integrations/SlackAlerting/slack_alerting.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  #### What this does ####
  #    Class for sending Slack Alerts #
  import asyncio
-@@ -1229,7 +1230,7 @@ Model Info:
+@@ -1229,7 +1230,7 @@
      ):
          from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
  
@@ -17,15 +16,14 @@ index 6ff048c..03ac42e 100644
                  raise ValueError(f"Trying to Customize Email Alerting\n {CommonProxyErrors.not_premium_user.value}")
  
 diff --git a/litellm/integrations/azure_storage/azure_storage.py b/litellm/integrations/azure_storage/azure_storage.py
-index 018ff75..666eb12 100644
 --- a/litellm/integrations/azure_storage/azure_storage.py
 +++ b/litellm/integrations/azure_storage/azure_storage.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import asyncio
  import os
  import time
-@@ -339,7 +340,7 @@ class AzureBlobStorageLogger(CustomBatchLogger):
+@@ -339,7 +340,7 @@
          """
          from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
  
@@ -35,15 +33,14 @@ index 018ff75..666eb12 100644
                  f"AzureBlobStorageLogger is only available for premium users. {CommonProxyErrors.not_premium_user}"
              )
 diff --git a/litellm/integrations/custom_guardrail.py b/litellm/integrations/custom_guardrail.py
-index 02ac53a..5f27735 100644
 --- a/litellm/integrations/custom_guardrail.py
 +++ b/litellm/integrations/custom_guardrail.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import contextvars
  import copy
  import hashlib
-@@ -1199,7 +1200,7 @@ class CustomGuardrail(CustomLogger):
+@@ -1199,7 +1200,7 @@
          """
          from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
  
@@ -53,15 +50,14 @@ index 02ac53a..5f27735 100644
                  "Trying to use premium guardrail without premium user %s", CommonProxyErrors.not_premium_user.value
              )
 diff --git a/litellm/integrations/gcs_bucket/gcs_bucket.py b/litellm/integrations/gcs_bucket/gcs_bucket.py
-index 092357a..c13f178 100644
 --- a/litellm/integrations/gcs_bucket/gcs_bucket.py
 +++ b/litellm/integrations/gcs_bucket/gcs_bucket.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import asyncio
  import hashlib
  import json
-@@ -45,7 +46,7 @@ class GCSBucketLogger(GCSBucketBase, AdditionalLoggingUtils):
+@@ -45,7 +46,7 @@
          asyncio.create_task(self.periodic_flush())
          AdditionalLoggingUtils.__init__(self)
  
@@ -70,7 +66,7 @@ index 092357a..c13f178 100644
              raise ValueError(
                  f"GCS Bucket logging is a premium feature. Please upgrade to use it. {CommonProxyErrors.not_premium_user.value}"
              )
-@@ -55,7 +56,7 @@ class GCSBucketLogger(GCSBucketBase, AdditionalLoggingUtils):
+@@ -55,7 +56,7 @@
          from litellm.proxy._types import CommonProxyErrors
          from litellm.proxy.proxy_server import premium_user
  
@@ -80,18 +76,9 @@ index 092357a..c13f178 100644
                  f"GCS Bucket logging is a premium feature. Please upgrade to use it. {CommonProxyErrors.not_premium_user.value}"
              )
 diff --git a/litellm/integrations/gcs_pubsub/pub_sub.py b/litellm/integrations/gcs_pubsub/pub_sub.py
-index 3e14d90..5e12b3f 100644
 --- a/litellm/integrations/gcs_pubsub/pub_sub.py
 +++ b/litellm/integrations/gcs_pubsub/pub_sub.py
-@@ -5,6 +5,7 @@ This is the PubSub logger for GCS PubSub, this sends LiteLLM SpendLogs Payloads
- 
- Users can use this instead of sending their SpendLogs to their Postgres database.
- """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
- 
- import asyncio
- import json
-@@ -46,7 +47,7 @@ class GcsPubSubLogger(CustomBatchLogger):
+@@ -46,7 +46,7 @@
          """
          from litellm.proxy.utils import _premium_user_check
  
@@ -100,7 +87,7 @@ index 3e14d90..5e12b3f 100644
  
          self.async_httpx_client = get_async_httpx_client(llm_provider=httpxSpecialProvider.LoggingCallback)
  
-@@ -109,7 +110,7 @@ class GcsPubSubLogger(CustomBatchLogger):
+@@ -109,7 +109,7 @@
          )
          from litellm.proxy.utils import _premium_user_check
  
@@ -110,16 +97,15 @@ index 3e14d90..5e12b3f 100644
          try:
              verbose_logger.debug("PubSub: Logging - Enters logging function for model %s", kwargs)
 diff --git a/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py b/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py
-index 77bdbd2..3ad8a7a 100644
 --- a/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py
 +++ b/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py
 @@ -1,4 +1,5 @@
  """Bridge token flow: litellm identity resolution and the DCR-bridge oauth_delegate mint/refresh pipeline."""
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import math
  import os
-@@ -485,7 +486,7 @@ async def _resolve_jwt_auth(
+@@ -485,7 +486,7 @@
          user_api_key_cache,
      )
  
@@ -129,18 +115,17 @@ index 77bdbd2..3ad8a7a 100644
      try:
          if jwt_handler.litellm_jwtauth.is_virtual_key_mapping_configured():
 diff --git a/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py b/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py
-index 15632eb..5279422 100644
 --- a/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py
 +++ b/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py
-@@ -4,6 +4,7 @@ credential ``lite login`` stores, proven by the proxy's own JWT auth (signature,
+@@ -4,6 +4,7 @@
  and the user and team sync it performs), so no browser round trip is needed."""
  
  from __future__ import annotations
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  from collections.abc import Awaitable, Callable, Mapping
  from dataclasses import dataclass
-@@ -84,7 +85,7 @@ def read_token_exchange_prerequisites() -> TokenExchangePrerequisites:
+@@ -84,7 +85,7 @@
      return TokenExchangePrerequisites(
          jwt_auth_enabled=general_settings.get("enable_jwt_auth", False) is True,
          has_database=prisma_client is not None,
@@ -150,15 +135,14 @@ index 15632eb..5279422 100644
      )
  
 diff --git a/litellm/proxy/auth/auth_utils.py b/litellm/proxy/auth/auth_utils.py
-index f20bdad..28d3ba2 100644
 --- a/litellm/proxy/auth/auth_utils.py
 +++ b/litellm/proxy/auth/auth_utils.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import importlib.util
  import os
  import re
-@@ -605,7 +606,7 @@ async def pre_db_read_auth_checks(
+@@ -605,7 +606,7 @@
      # Check 4. Check if request route is an allowed route on the proxy
      if "allowed_routes" in general_settings:
          _allowed_routes: Final = general_settings["allowed_routes"]
@@ -167,7 +151,7 @@ index f20bdad..28d3ba2 100644
              verbose_proxy_logger.error(
                  "Trying to set allowed_routes. This is an Enterprise feature. %s",
                  CommonProxyErrors.not_premium_user.value,
-@@ -643,7 +644,7 @@ def route_in_additonal_public_routes(current_route: str):
+@@ -643,7 +644,7 @@
      from litellm.proxy.proxy_server import general_settings, premium_user
  
      try:
@@ -176,7 +160,7 @@ index f20bdad..28d3ba2 100644
              return False
          if general_settings is None:
              return False
-@@ -858,7 +859,7 @@ async def check_if_request_size_is_safe(request: Request) -> bool:
+@@ -858,7 +859,7 @@
  
      if max_request_size_mb is not None:
          # Check if premium user
@@ -185,7 +169,7 @@ index f20bdad..28d3ba2 100644
              verbose_proxy_logger.warning(
                  "using max_request_size_mb - not checking -  this is an enterprise only feature. %s",
                  CommonProxyErrors.not_premium_user.value,
-@@ -919,7 +920,7 @@ async def check_response_size_is_safe(response: object) -> bool:
+@@ -919,7 +920,7 @@
      max_response_size_mb: Final = general_settings.get("max_response_size_mb", None)
      if max_response_size_mb is not None:
          # Check if premium user
@@ -195,15 +179,14 @@ index f20bdad..28d3ba2 100644
                  "using max_response_size_mb - not checking -  this is an enterprise only feature. %s",
                  CommonProxyErrors.not_premium_user.value,
 diff --git a/litellm/proxy/auth/litellm_license.py b/litellm/proxy/auth/litellm_license.py
-index 6460856..c504120 100644
 --- a/litellm/proxy/auth/litellm_license.py
 +++ b/litellm/proxy/auth/litellm_license.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked
  # What is this?
  ## If litellm license in env, checks if it's valid
  import base64
-@@ -168,7 +169,7 @@ class LicenseCheck:
+@@ -168,7 +169,7 @@
          "*" wildcard that grants every feature, otherwise one per capability. A license verified
          through the API carries no feature list, so it does not lift the limit either.
          """
@@ -213,18 +196,17 @@ index 6460856..c504120 100644
          return 1
  
 diff --git a/litellm/proxy/auth/login_utils.py b/litellm/proxy/auth/login_utils.py
-index 629b310..37393f7 100644
 --- a/litellm/proxy/auth/login_utils.py
 +++ b/litellm/proxy/auth/login_utils.py
-@@ -4,6 +4,7 @@ Login utilities for handling user authentication in the proxy server.
+@@ -4,6 +4,7 @@
  This module contains the core login logic that can be reused across different
  login endpoints (e.g., /login and /v2/login).
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import os
  import secrets
-@@ -522,7 +523,7 @@ def create_ui_token_object(
+@@ -522,7 +523,7 @@
          user_email=login_result.user_email,
          user_role=login_result.user_role,
          login_method=login_result.login_method,
@@ -234,15 +216,14 @@ index 629b310..37393f7 100644
          disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
          server_root_path=get_server_root_path(),
 diff --git a/litellm/proxy/auth/oauth2_check.py b/litellm/proxy/auth/oauth2_check.py
-index 3633f7b..3f8c936 100644
 --- a/litellm/proxy/auth/oauth2_check.py
 +++ b/litellm/proxy/auth/oauth2_check.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import base64
  import os
  from typing import Final, cast
-@@ -128,7 +129,7 @@ class Oauth2Handler:
+@@ -128,7 +129,7 @@
          """
          from litellm.proxy.proxy_server import premium_user
  
@@ -252,15 +233,14 @@ index 3633f7b..3f8c936 100644
                  "Oauth2 token validation is only available for premium users" + CommonProxyErrors.not_premium_user.value
              )
 diff --git a/litellm/proxy/auth/route_checks.py b/litellm/proxy/auth/route_checks.py
-index 2ab76a7..e607528 100644
 --- a/litellm/proxy/auth/route_checks.py
 +++ b/litellm/proxy/auth/route_checks.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import re
  from collections.abc import Collection
  from typing import Final
-@@ -369,7 +370,7 @@ class RouteChecks:
+@@ -369,7 +370,7 @@
          from litellm.proxy.proxy_server import general_settings, premium_user
  
          if "admin_only_routes" in general_settings:
@@ -270,18 +250,17 @@ index 2ab76a7..e607528 100644
                      "Trying to use 'admin_only_routes' this is an Enterprise only feature. %s",
                      CommonProxyErrors.not_premium_user.value,
 diff --git a/litellm/proxy/auth/user_api_key_auth.py b/litellm/proxy/auth/user_api_key_auth.py
-index 3400dcc..1108507 100644
 --- a/litellm/proxy/auth/user_api_key_auth.py
 +++ b/litellm/proxy/auth/user_api_key_auth.py
-@@ -6,6 +6,7 @@ it checks if the user passed a valid API Key to the LiteLLM Proxy
+@@ -6,6 +6,7 @@
  Returns a UserAPIKeyAuth object if the API key is valid
  
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import asyncio
  import fnmatch
-@@ -1620,7 +1621,7 @@ async def _user_api_key_auth_builder(
+@@ -1620,7 +1621,7 @@
          if (should_apply_global_oauth2 and not is_jwt) or should_apply_override_oauth2:
              from litellm.proxy.proxy_server import premium_user
  
@@ -290,7 +269,7 @@ index 3400dcc..1108507 100644
                  raise ProxyException(
                      message="Oauth2 token validation is only available for premium users. "
                      + CommonProxyErrors.not_premium_user.value,
-@@ -1640,7 +1641,7 @@ async def _user_api_key_auth_builder(
+@@ -1640,7 +1641,7 @@
              if is_jwt:
                  from litellm.proxy.proxy_server import premium_user
  
@@ -299,16 +278,484 @@ index 3400dcc..1108507 100644
                      raise ProxyException(
                          message=f"JWT Auth is an enterprise only feature. {CommonProxyErrors.not_premium_user.value}",
                          type=ProxyErrorTypes.auth_error,
+diff --git a/litellm/proxy/branding.py b/litellm/proxy/branding.py
+new file mode 100644
+--- /dev/null
++++ b/litellm/proxy/branding.py
+@@ -0,0 +1,464 @@
++"""
++Env-var driven branding for the proxy UI, server-rendered HTML pages and emails.
++
++Nothing on disk is modified. Text responses are rewritten as they are served, so
++branding can be changed (or removed) by changing env vars and restarting.
++
++All settings are optional; with none set, the middleware is a pass-through.
++
++    BRAND_NAME                 Replaces the product name "LiteLLM" in UI text, page titles,
++                               server-rendered pages, emails and the API docs title.
++    BRAND_TITLE                Browser tab title for the UI (default: "<BRAND_NAME> Dashboard").
++    BRAND_DESCRIPTION          HTML meta description for the UI.
++    BRAND_DOCS_URL             Replaces links to docs.litellm.ai.
++    BRAND_GITHUB_URL           Replaces links to github.com/BerriAI/litellm.
++    BRAND_WEBSITE_URL          Replaces links to litellm.ai.
++    BRAND_PRIMARY_COLOR        Primary colour (buttons, active nav, focus ring), light mode.
++    BRAND_PRIMARY_FOREGROUND   Text colour on primary, light mode.
++    BRAND_PRIMARY_COLOR_DARK   Primary colour, dark mode (defaults to BRAND_PRIMARY_COLOR).
++    BRAND_PRIMARY_FOREGROUND_DARK
++    BRAND_CSS_VARS             Any UI CSS variables, light mode: "background=#fff;sidebar=#f4f4f5".
++    BRAND_CSS_VARS_DARK        Same, dark mode.
++    BRAND_FONT_FAMILY          CSS font-family for the UI.
++    BRAND_FONT_URL             Stylesheet URL for the font (e.g. Google Fonts).
++    BRAND_CUSTOM_CSS           Raw CSS appended to the UI.
++    BRAND_CUSTOM_CSS_URL       Stylesheet URL appended to the UI.
++    BRAND_PRESERVE_PHRASES     Extra "|"-separated phrases containing "LiteLLM" to leave unchanged.
++    BRAND_EMAIL_FOOTER         HTML replacing the default email footer (empty string removes it).
++
++Logos and favicon use upstream's existing settings: UI_LOGO_PATH, UI_LOGO_PATH_DARK,
++LITELLM_FAVICON_URL and EMAIL_LOGO_URL.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import json
++import os
++import re
++from collections import OrderedDict
++from dataclasses import dataclass, field
++from functools import lru_cache
++from typing import Final
++
++from starlette.types import ASGIApp, Message, Receive, Scope, Send
++
++UPSTREAM_NAME: Final = "LiteLLM"
++
++# Phrases that the UI compares against values returned by the API (or that name
++# upstream's commercial offering); rewriting them would break behaviour or misattribute.
++_DEFAULT_PRESERVED: Final = (
++    "LiteLLM Content Filter",
++    "LiteLLM LLM as a Judge",
++    "LiteLLM Enterprise",
++)
++
++_NAME_RE: Final = re.compile(r"(?:\U0001F685\s?)?(?<![\w$])LiteLLM(?![\w$])")
++# URL bodies stop at quotes, whitespace and anything that could belong to surrounding code
++# (template-literal ${...}, call parentheses), so only the literal URL text is replaced.
++_URL_BODY: Final = r"[^\s\"'`<>(){}$\\]*"
++_DOCS_URL_RE: Final = re.compile(r"https?://docs\.litellm\.ai" + _URL_BODY)
++_GITHUB_URL_RE: Final = re.compile(r"https?://github\.com/BerriAI/litellm(?![\w-])" + _URL_BODY, re.IGNORECASE)
++_WEBSITE_URL_RE: Final = re.compile(r"https?://(?:www\.)?litellm\.ai(?![\w.-])/?(?=[\s\"'`<>)\\]|$)")
++
++_CSS_VAR_NAME_RE: Final = re.compile(r"^[A-Za-z0-9-]+$")
++
++UI_PATH_MARKERS: Final = ("/ui", "/_next/", "/litellm-asset-prefix/")
++_TEXT_TYPES_ANY_PATH: Final = ("text/html",)
++_TEXT_TYPES_UI: Final = (
++    "text/html",
++    "application/javascript",
++    "text/javascript",
++    "text/css",
++    "text/plain",
++    "text/x-component",
++)
++_MAX_BODY: Final = 16 * 1024 * 1024
++_CACHE_SIZE: Final = 512
++
++
++def _env(name: str) -> str | None:
++    value = os.getenv(name)
++    if value is None:
++        return None
++    value = value.strip()
++    return value or None
++
++
++def _safe_css(value: str, setting: str) -> str:
++    """Env values are operator-controlled, but never let one close the <style> element."""
++    if "<" in value:
++        raise ValueError(f"{setting} must not contain '<'")
++    return value
++
++
++def _parse_css_vars(raw: str | None, setting: str) -> dict[str, str]:
++    result: dict[str, str] = {}
++    if not raw:
++        return result
++    for part in raw.split(";"):
++        if not part.strip():
++            continue
++        if "=" not in part:
++            raise ValueError(f"{setting}: expected name=value, got {part!r}")
++        name, value = (s.strip() for s in part.split("=", 1))
++        name = name.removeprefix("--")
++        if not _CSS_VAR_NAME_RE.match(name):
++            raise ValueError(f"{setting}: invalid CSS variable name {name!r}")
++        result[name] = _safe_css(value, setting)
++    return result
++
++
++@dataclass(frozen=True)
++class BrandingConfig:
++    name: str | None = None
++    title: str | None = None
++    description: str | None = None
++    docs_url: str | None = None
++    github_url: str | None = None
++    website_url: str | None = None
++    css_vars: dict[str, str] = field(default_factory=dict)
++    css_vars_dark: dict[str, str] = field(default_factory=dict)
++    font_family: str | None = None
++    font_url: str | None = None
++    custom_css: str | None = None
++    custom_css_url: str | None = None
++    preserved: tuple[str, ...] = _DEFAULT_PRESERVED
++    email_footer: str | None = None
++
++    @property
++    def enabled(self) -> bool:
++        return any(
++            (
++                self.name,
++                self.title,
++                self.description,
++                self.docs_url,
++                self.github_url,
++                self.website_url,
++                self.css_vars,
++                self.css_vars_dark,
++                self.font_family,
++                self.font_url,
++                self.custom_css,
++                self.custom_css_url,
++            )
++        )
++
++    @property
++    def fingerprint(self) -> str:
++        return hashlib.sha256(repr(self).encode()).hexdigest()[:16]
++
++    @classmethod
++    def from_env(cls) -> BrandingConfig:
++        css_vars: dict[str, str] = {}
++        css_vars_dark: dict[str, str] = {}
++
++        primary = _env("BRAND_PRIMARY_COLOR")
++        primary_fg = _env("BRAND_PRIMARY_FOREGROUND")
++        primary_dark = _env("BRAND_PRIMARY_COLOR_DARK") or primary
++        primary_fg_dark = _env("BRAND_PRIMARY_FOREGROUND_DARK") or primary_fg
++        for target, color, fg, suffix in (
++            (css_vars, primary, primary_fg, ""),
++            (css_vars_dark, primary_dark, primary_fg_dark, "_DARK"),
++        ):
++            if color:
++                color = _safe_css(color, f"BRAND_PRIMARY_COLOR{suffix}")
++                target.update({"primary": color, "sidebar-primary": color, "ring": color})
++            if fg:
++                fg = _safe_css(fg, f"BRAND_PRIMARY_FOREGROUND{suffix}")
++                target.update({"primary-foreground": fg, "sidebar-primary-foreground": fg})
++
++        css_vars.update(_parse_css_vars(_env("BRAND_CSS_VARS"), "BRAND_CSS_VARS"))
++        css_vars_dark.update(_parse_css_vars(_env("BRAND_CSS_VARS_DARK"), "BRAND_CSS_VARS_DARK"))
++
++        extra_preserved = tuple(p.strip() for p in (_env("BRAND_PRESERVE_PHRASES") or "").split("|") if p.strip())
++        font_family = _env("BRAND_FONT_FAMILY")
++        custom_css = _env("BRAND_CUSTOM_CSS")
++        name = _env("BRAND_NAME")
++        return cls(
++            name=name,
++            title=_env("BRAND_TITLE") or (f"{name} Dashboard" if name else None),
++            description=_env("BRAND_DESCRIPTION"),
++            docs_url=_env("BRAND_DOCS_URL"),
++            github_url=_env("BRAND_GITHUB_URL"),
++            website_url=_env("BRAND_WEBSITE_URL"),
++            css_vars=css_vars,
++            css_vars_dark=css_vars_dark,
++            font_family=_safe_css(font_family, "BRAND_FONT_FAMILY") if font_family else None,
++            font_url=_env("BRAND_FONT_URL"),
++            custom_css=_safe_css(custom_css, "BRAND_CUSTOM_CSS") if custom_css else None,
++            custom_css_url=_env("BRAND_CUSTOM_CSS_URL"),
++            preserved=_DEFAULT_PRESERVED + extra_preserved,
++            # None = keep upstream footer; "" = remove it.
++            email_footer=os.getenv("BRAND_EMAIL_FOOTER"),
++        )
++
++
++@lru_cache(maxsize=1)
++def get_branding() -> BrandingConfig:
++    """Read once, on first use, so env vars loaded from the proxy YAML are seen."""
++    return BrandingConfig.from_env()
++
++
++def _html_attr(value: str) -> str:
++    return value.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
++
++
++def _html_text(value: str) -> str:
++    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
++
++
++def _is_bare_object_key(text: str, match: re.Match[str]) -> bool:
++    """`{LiteLLM: ...}` / `,LiteLLM:` in minified JS is code, not display text."""
++    before = text[max(0, match.start() - 2) : match.start()].rstrip()
++    after = text[match.end() : match.end() + 2].lstrip()
++    return before.endswith(("{", ",")) and after.startswith(":")
++
++
++def brand_text(text: str, config: BrandingConfig | None = None, *, html: bool = False, javascript: bool = False) -> str:
++    """Apply name and link substitutions. Safe on HTML, JS, CSS and plain text."""
++    config = config or get_branding()
++    if not config.enabled:
++        return text
++
++    protected: dict[str, str] = {}
++
++    def protect(value: str) -> str:
++        token = f"\x00BRANDVALUE{len(protected)}\x00"
++        protected[token] = value
++        return token
++
++    def replacement(value: str) -> str:
++        if javascript:
++            encoded = json.dumps(value, ensure_ascii=True)[1:-1]
++            for char in "'`$<>":
++                encoded = encoded.replace(char, f"\\u{ord(char):04x}")
++            return encoded
++        return _html_attr(value) if html else value
++
++    if config.docs_url:
++        text = _DOCS_URL_RE.sub(lambda _m: protect(replacement(config.docs_url or "")), text)
++    if config.github_url:
++        text = _GITHUB_URL_RE.sub(lambda _m: protect(replacement(config.github_url or "")), text)
++    if config.website_url:
++        text = _WEBSITE_URL_RE.sub(lambda _m: protect(replacement(config.website_url or "")), text)
++
++    if config.title:
++        title = replacement(config.title)
++        text = text.replace("LiteLLM Dashboard", protect(title))
++    if config.description:
++        desc = replacement(config.description)
++        text = text.replace("LiteLLM Proxy Admin UI", protect(desc))
++
++    if config.name and UPSTREAM_NAME in text:
++        placeholders: dict[str, str] = {}
++        for i, phrase in enumerate(sorted(config.preserved, key=len, reverse=True)):
++            if phrase in text:
++                token = f"\x00BRANDKEEP{i}\x00"
++                placeholders[token] = phrase
++                text = text.replace(phrase, token)
++        name = replacement(config.name)
++        text = _NAME_RE.sub(lambda m: m.group(0) if _is_bare_object_key(text, m) else name, text)
++        for token, phrase in placeholders.items():
++            text = text.replace(token, phrase)
++    for token, value in protected.items():
++        text = text.replace(token, value)
++    return text
++
++
++def build_head_injection(config: BrandingConfig) -> str:
++    parts: list[str] = []
++    if config.font_url:
++        parts.append(f'<link rel="stylesheet" href="{_html_attr(config.font_url)}">')
++
++    css: list[str] = []
++    if config.css_vars:
++        decls = "".join(f"--{k}:{v};" for k, v in config.css_vars.items())
++        css.append(f"html:root{{{decls}}}")
++    if config.css_vars_dark:
++        decls = "".join(f"--{k}:{v};" for k, v in config.css_vars_dark.items())
++        css.append(f"html.dark{{{decls}}}")
++    if config.font_family:
++        css.append(f"html body{{font-family:{config.font_family} !important}}")
++    if config.custom_css:
++        css.append(config.custom_css)
++    if css:
++        parts.append(f'<style id="brand-overrides">{"".join(css)}</style>')
++
++    if config.custom_css_url:
++        parts.append(f'<link rel="stylesheet" href="{_html_attr(config.custom_css_url)}">')
++    return "".join(parts)
++
++
++def brand_html_document(text: str, config: BrandingConfig | None = None, *, inject_head: bool) -> str:
++    config = config or get_branding()
++    parts = re.split(r"(<script\b[^>]*>)(.*?)(</script\s*>)", text, flags=re.IGNORECASE | re.DOTALL)
++    for i in range(len(parts)):
++        if i % 4 == 2:
++            parts[i] = brand_text(parts[i], config, javascript=True)
++        elif i % 4 != 3:
++            parts[i] = brand_text(parts[i], config, html=True)
++    text = "".join(parts)
++    if inject_head:
++        injection = build_head_injection(config)
++        if injection and "</head>" in text and 'id="brand-overrides"' not in text:
++            text = text.replace("</head>", injection + "</head>", 1)
++    return text
++
++
++def brand_email(subject: str, html: str) -> tuple[str, str]:
++    config = get_branding()
++    if config.email_footer is not None:
++        from litellm.integrations.email_templates.email_footer import EMAIL_FOOTER
++
++        html = html.replace(EMAIL_FOOTER, config.email_footer)
++    return brand_text(subject, config), brand_text(html, config, html=True)
++
++
++def _is_ui_path(path: str) -> bool:
++    return any(marker in path for marker in UI_PATH_MARKERS)
++
++
++class BrandingMiddleware:
++    """
++    Rewrites text responses for branding. Only buffers responses whose content type is
++    HTML (any path) or a UI asset type (UI paths only); everything else, including
++    streamed LLM responses, passes straight through.
++    """
++
++    def __init__(self, app: ASGIApp) -> None:
++        self.app = app
++        self._cache: OrderedDict[tuple[str, str, str, bool, bool], tuple[bytes, str]] = OrderedDict()
++
++    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
++        if scope["type"] != "http" or scope.get("method") != "GET":
++            await self.app(scope, receive, send)
++            return
++        config = get_branding()
++        if not config.enabled:
++            await self.app(scope, receive, send)
++            return
++
++        path: str = scope.get("path", "")
++        ui_path = _is_ui_path(path)
++
++        # Conditional requests would let browsers keep unbranded or stale-branded copies,
++        # so the inner app always sends a full body and this middleware owns validation.
++        client_etag: str | None = None
++        headers = []
++        for k, v in scope.get("headers", []):
++            if k == b"if-none-match":
++                client_etag = v.decode("latin-1")
++                continue
++            if k == b"if-modified-since":
++                continue
++            headers.append((k, v))
++        inner_scope = dict(scope, headers=headers)
++
++        start: Message | None = None
++        chunks: list[bytes] = []
++        passthrough = False
++        size = 0
++
++        async def wrapped_send(message: Message) -> None:
++            nonlocal start, passthrough, size
++            if message["type"] == "http.response.start":
++                content_type = ""
++                encoded = False
++                for k, v in message.get("headers", []):
++                    if k == b"content-type":
++                        content_type = v.decode("latin-1").lower()
++                    elif k == b"content-encoding":
++                        encoded = True
++                allowed = _TEXT_TYPES_UI if ui_path else _TEXT_TYPES_ANY_PATH
++                if encoded or message.get("status") != 200 or not content_type.startswith(allowed):
++                    passthrough = True
++                    await send(message)
++                    return
++                start = message
++                return
++            if passthrough:
++                await send(message)
++                return
++            if message["type"] == "http.response.body":
++                chunks.append(message.get("body", b""))
++                size += len(chunks[-1])
++                if size > _MAX_BODY:
++                    # Too large to rewrite safely: flush what we have unmodified.
++                    passthrough = True
++                    assert start is not None
++                    await send(start)
++                    await send({"type": "http.response.body", "body": b"".join(chunks), "more_body": True})
++                    if not message.get("more_body", False):
++                        await send({"type": "http.response.body", "body": b"", "more_body": False})
++                    return
++                if not message.get("more_body", False):
++                    await self._finish(start, b"".join(chunks), path, config, client_etag, send)
++                return
++            await send(message)
++
++        await self.app(inner_scope, receive, wrapped_send)
++
++    async def _finish(
++        self,
++        start: Message | None,
++        body: bytes,
++        path: str,
++        config: BrandingConfig,
++        client_etag: str | None,
++        send: Send,
++    ) -> None:
++        assert start is not None
++        source_hash = hashlib.sha256(body).hexdigest()
++        content_type = next((v for k, v in start.get("headers", []) if k == b"content-type"), b"").decode("latin-1")
++        is_html = content_type.lower().startswith("text/html")
++        javascript = (
++            "javascript" in content_type.lower()
++            or content_type.lower().startswith("text/x-component")
++            or (_is_ui_path(path) and path.endswith(".txt") and content_type.lower().startswith("text/plain"))
++        )
++        key = (
++            source_hash,
++            config.fingerprint,
++            content_type.split(";", 1)[0].strip().lower(),
++            _is_ui_path(path),
++            javascript,
++        )
++        cached = self._cache.get(key)
++        if cached is not None:
++            self._cache.move_to_end(key)
++            new_body, etag = cached
++        else:
++            try:
++                text = body.decode("utf-8")
++            except UnicodeDecodeError:
++                new_body, etag = body, f'"{source_hash[:32]}"'
++            else:
++                if is_html:
++                    text = brand_html_document(text, config, inject_head=_is_ui_path(path))
++                else:
++                    text = brand_text(text, config, javascript=javascript)
++                new_body = text.encode("utf-8")
++                etag = f'"{hashlib.sha256(new_body).hexdigest()[:32]}"'
++            self._cache[key] = (new_body, etag)
++            if len(self._cache) > _CACHE_SIZE:
++                self._cache.popitem(last=False)
++
++        drop = {b"content-length", b"etag", b"last-modified"}
++        headers = [(k, v) for k, v in start.get("headers", []) if k not in drop]
++        headers.append((b"etag", etag.encode("latin-1")))
++
++        if client_etag is not None and etag in (t.strip() for t in client_etag.split(",")):
++            await send({"type": "http.response.start", "status": 304, "headers": headers})
++            await send({"type": "http.response.body", "body": b""})
++            return
++
++        headers.append((b"content-length", str(len(new_body)).encode("latin-1")))
++        await send({"type": "http.response.start", "status": 200, "headers": headers})
++        await send({"type": "http.response.body", "body": new_body})
++
++
++def filter_openapi_paths(schema: dict, allowed_routes: list[str]) -> dict:
++    schema["paths"] = {path: spec for path, spec in schema.get("paths", {}).items() if path in allowed_routes}
++    return schema
 diff --git a/litellm/proxy/common_utils/http_parsing_utils.py b/litellm/proxy/common_utils/http_parsing_utils.py
-index aa4d6a3..b2ad0ac 100644
 --- a/litellm/proxy/common_utils/http_parsing_utils.py
 +++ b/litellm/proxy/common_utils/http_parsing_utils.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import json
  import re
  from collections.abc import Collection, Mapping
-@@ -432,7 +433,7 @@ def check_file_size_under_limit(
+@@ -432,7 +433,7 @@
              file_content_size_in_mb,
              max_file_size_mb,
          )
@@ -318,15 +765,14 @@ index aa4d6a3..b2ad0ac 100644
                  message=f"Tried setting max_file_size_mb for /audio/transcriptions. {CommonProxyErrors.not_premium_user.value}",
                  code=status.HTTP_400_BAD_REQUEST,
 diff --git a/litellm/proxy/fine_tuning_endpoints/endpoints.py b/litellm/proxy/fine_tuning_endpoints/endpoints.py
-index a13ad00..df30d7c 100644
 --- a/litellm/proxy/fine_tuning_endpoints/endpoints.py
 +++ b/litellm/proxy/fine_tuning_endpoints/endpoints.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  #########################################################################
  
  #                          /v1/fine_tuning Endpoints
-@@ -108,7 +109,7 @@ async def create_fine_tuning_job(
+@@ -108,7 +109,7 @@
  
      data = fine_tuning_request.model_dump(exclude_none=True)
      try:
@@ -335,7 +781,7 @@ index a13ad00..df30d7c 100644
              raise ValueError(f"Only premium users can use this endpoint + {CommonProxyErrors.not_premium_user.value}")
          # Convert Pydantic model to dict
  
-@@ -257,7 +258,7 @@ async def retrieve_fine_tuning_job(
+@@ -257,7 +258,7 @@
  
      data: dict = {"fine_tuning_job_id": fine_tuning_job_id}
      try:
@@ -344,7 +790,7 @@ index a13ad00..df30d7c 100644
              raise ValueError(f"Only premium users can use this endpoint + {CommonProxyErrors.not_premium_user.value}")
          await validate_managed_id_requirement(
              resource_id=fine_tuning_job_id,
-@@ -409,7 +410,7 @@ async def list_fine_tuning_jobs(
+@@ -409,7 +410,7 @@
  
      data: dict = {}
      try:
@@ -353,7 +799,7 @@ index a13ad00..df30d7c 100644
              raise ValueError(f"Only premium users can use this endpoint + {CommonProxyErrors.not_premium_user.value}")
          # Include original request and headers in the data
          base_llm_response_processor: Final = ProxyBaseLLMRequestProcessing(data=data)
-@@ -530,7 +531,7 @@ async def cancel_fine_tuning_job(
+@@ -530,7 +531,7 @@
  
      data: dict = {"fine_tuning_job_id": fine_tuning_job_id}
      try:
@@ -363,15 +809,14 @@ index a13ad00..df30d7c 100644
          await validate_managed_id_requirement(
              resource_id=fine_tuning_job_id,
 diff --git a/litellm/proxy/hooks/dynamic_rate_limiter.py b/litellm/proxy/hooks/dynamic_rate_limiter.py
-index f4eac6a..2c7fc7b 100644
 --- a/litellm/proxy/hooks/dynamic_rate_limiter.py
 +++ b/litellm/proxy/hooks/dynamic_rate_limiter.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked
  # What is this?
  ## Allocates dynamic tpm/rpm quota for a project based on current traffic
  ## Tracks num active projects per minute
-@@ -112,7 +113,7 @@ class _PROXY_DynamicRateLimitHandler(CustomLogger):
+@@ -112,7 +113,7 @@
                      litellm.priority_reservation,
                  )
              elif priority is not None and litellm.priority_reservation is not None:
@@ -381,18 +826,17 @@ index f4eac6a..2c7fc7b 100644
                          "PREMIUM FEATURE: Reserving tpm/rpm by priority is a premium feature. Please add a 'LITELLM_LICENSE' to your .env to enable this.\nGet a license: https://docs.litellm.ai/docs/proxy/enterprise."
                      )
 diff --git a/litellm/proxy/hooks/dynamic_rate_limiter_v3.py b/litellm/proxy/hooks/dynamic_rate_limiter_v3.py
-index 0339cf4..7bf539e 100644
 --- a/litellm/proxy/hooks/dynamic_rate_limiter_v3.py
 +++ b/litellm/proxy/hooks/dynamic_rate_limiter_v3.py
 @@ -1,6 +1,7 @@
  """
  Dynamic rate limiter v3 - Saturation-aware priority-based rate limiting
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked
  
  import os
  from collections.abc import Callable
-@@ -129,7 +130,7 @@ class _PROXY_DynamicRateLimitHandlerV3(CustomLogger):
+@@ -129,7 +130,7 @@
          if litellm.priority_reservation is None or priority not in litellm.priority_reservation:
              verbose_proxy_logger.debug("Priority Reservation not set for the given priority.")
          elif priority is not None and litellm.priority_reservation is not None:
@@ -402,15 +846,14 @@ index 0339cf4..7bf539e 100644
                      "PREMIUM FEATURE: Reserving tpm/rpm by priority is a premium feature. Please add a 'LITELLM_LICENSE' to your .env to enable this.\nGet a license: https://docs.litellm.ai/docs/proxy/enterprise."
                  )
 diff --git a/litellm/proxy/litellm_pre_call_utils.py b/litellm/proxy/litellm_pre_call_utils.py
-index d6daf6e..58d516d 100644
 --- a/litellm/proxy/litellm_pre_call_utils.py
 +++ b/litellm/proxy/litellm_pre_call_utils.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import asyncio
  import copy
  import json
-@@ -1058,7 +1059,7 @@ def _dynamically_disabled_backends(
+@@ -1058,7 +1059,7 @@
      """
      from litellm.proxy.proxy_server import premium_user
  
@@ -419,7 +862,7 @@ index d6daf6e..58d516d 100644
          return frozenset()
      header: Final = (request_headers if request_headers is not None else _NO_REQUEST_HEADERS).get(
          X_LITELLM_DISABLE_CALLBACKS
-@@ -2953,7 +2954,7 @@ def _enforced_params_check(
+@@ -2953,7 +2954,7 @@
      )
      if enforced_params is None:
          return True
@@ -428,16 +871,61 @@ index d6daf6e..58d516d 100644
          raise ValueError(
              f"Enforced Params is an Enterprise feature. Enforced Params: {enforced_params}. {CommonProxyErrors.not_premium_user.value}"
          )
+@@ -3006,19 +3007,19 @@
+     # Add key-level guardrails first
+     if key_metadata and "guardrails" in key_metadata:
+         if isinstance(key_metadata["guardrails"], list) and len(key_metadata["guardrails"]) > 0:
+-            _premium_user_check()
++            _premium_user_check(unlock="key_team_settings")
+             combined_guardrails.update(key_metadata["guardrails"])
+ 
+     # Add team-level guardrails (set automatically handles duplicates)
+     if team_metadata and "guardrails" in team_metadata:
+         if isinstance(team_metadata["guardrails"], list) and len(team_metadata["guardrails"]) > 0:
+-            _premium_user_check()
++            _premium_user_check(unlock="key_team_settings")
+             combined_guardrails.update(team_metadata["guardrails"])
+ 
+     # Add project-level guardrails (set automatically handles duplicates)
+     if project_metadata and "guardrails" in project_metadata:
+         if isinstance(project_metadata["guardrails"], list) and len(project_metadata["guardrails"]) > 0:
+-            _premium_user_check()
++            _premium_user_check(unlock="key_team_settings")
+             combined_guardrails.update(project_metadata["guardrails"])
+ 
+     # Set combined guardrails in metadata as list
+@@ -3060,19 +3061,19 @@
+     # Add key-level policies first
+     if key_metadata and "policies" in key_metadata:
+         if isinstance(key_metadata["policies"], list) and len(key_metadata["policies"]) > 0:
+-            _premium_user_check()
++            _premium_user_check(unlock="key_team_settings")
+             policy_names.update(key_metadata["policies"])
+ 
+     # Add team-level policies
+     if team_metadata and "policies" in team_metadata:
+         if isinstance(team_metadata["policies"], list) and len(team_metadata["policies"]) > 0:
+-            _premium_user_check()
++            _premium_user_check(unlock="key_team_settings")
+             policy_names.update(team_metadata["policies"])
+ 
+     # Add project-level policies
+     if project_metadata and "policies" in project_metadata:
+         if isinstance(project_metadata["policies"], list) and len(project_metadata["policies"]) > 0:
+-            _premium_user_check()
++            _premium_user_check(unlock="key_team_settings")
+             policy_names.update(project_metadata["policies"])
+ 
+     if not policy_names:
 diff --git a/litellm/proxy/management_endpoints/common_utils.py b/litellm/proxy/management_endpoints/common_utils.py
-index 2e29eb5..3d38ddf 100644
 --- a/litellm/proxy/management_endpoints/common_utils.py
 +++ b/litellm/proxy/management_endpoints/common_utils.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import math
  from collections.abc import Mapping
  from types import MappingProxyType
-@@ -81,7 +82,7 @@ def validate_team_model_max_budget(
+@@ -81,7 +82,7 @@
      """Reject a team `model_max_budget` the limiter could not enforce (no duration, bad cap, tpm/rpm limits)."""
      if not model_max_budget:
          return
@@ -446,19 +934,36 @@ index 2e29eb5..3d38ddf 100644
          raise HTTPException(
              status_code=403,
              detail={
+@@ -450,7 +451,7 @@
+         value: Value to set for the field
+     """
+     if field_name in LiteLLM_ManagementEndpoint_MetadataFields_Premium and value:
+-        _premium_user_check(field_name)
++        _premium_user_check(field_name, unlock="key_team_settings")
+ 
+     object_data.metadata = object_data.metadata or {}
+     object_data.metadata[field_name] = value
+@@ -650,7 +651,7 @@
+         # only for a truthy value. The falsy value is still persisted below so a
+         # previously-set field can be cleared.
+         if updated_kv.get(field_name):
+-            _premium_user_check()
++            _premium_user_check(unlock="key_team_settings")
+ 
+     if field_name in updated_kv and updated_kv[field_name] is not None:
+         # remove field from updated_kv
 diff --git a/litellm/proxy/management_endpoints/key_management_endpoints.py b/litellm/proxy/management_endpoints/key_management_endpoints.py
-index d417ec1..ba72a07 100644
 --- a/litellm/proxy/management_endpoints/key_management_endpoints.py
 +++ b/litellm/proxy/management_endpoints/key_management_endpoints.py
-@@ -8,6 +8,7 @@ All /key management endpoints
+@@ -8,6 +8,7 @@
  /key/update
  /key/delete
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import asyncio
  import copy
-@@ -1422,7 +1423,7 @@ async def _common_key_generation_helper(
+@@ -1422,7 +1423,7 @@
      if "tags" in data_json:
          from litellm.proxy.proxy_server import premium_user
  
@@ -467,7 +972,16 @@ index d417ec1..ba72a07 100644
              raise ValueError(f"Only premium users can add tags to keys. {CommonProxyErrors.not_premium_user.value}")
  
          _metadata: Final = data_json.get("metadata")
-@@ -4502,7 +4503,7 @@ def _check_model_access_group(models: list[str] | None, llm_router: Router | Non
+@@ -2361,7 +2362,7 @@
+                 from litellm.proxy.utils import _premium_user_check
+ 
+                 if v:
+-                    _premium_user_check(k)
++                    _premium_user_check(k, unlock="key_team_settings")
+                 casted_metadata[k] = v
+ 
+     except Exception as e:
+@@ -4502,7 +4503,7 @@
  
      for model in models:
          if llm_router._is_model_access_group_for_wildcard_route(model_access_group=model):
@@ -476,7 +990,7 @@ index d417ec1..ba72a07 100644
                  raise HTTPException(
                      status_code=status.HTTP_403_FORBIDDEN,
                      detail={
-@@ -4764,7 +4765,7 @@ async def generate_key_helper_fn(
+@@ -4764,7 +4765,7 @@
          if isinstance(saved_token["metadata"], str):
              saved_token["metadata"] = json.loads(saved_token["metadata"])
          if isinstance(saved_token["permissions"], str):
@@ -485,7 +999,7 @@ index d417ec1..ba72a07 100644
                  raise ValueError("get_spend_routes permission is only available for LiteLLM Enterprise users")
  
              saved_token["permissions"] = json.loads(saved_token["permissions"])
-@@ -5837,7 +5838,7 @@ async def regenerate_key_fn(
+@@ -5837,7 +5838,7 @@
          )
  
          if (
@@ -494,7 +1008,7 @@ index d417ec1..ba72a07 100644
          ):  # allow master key regeneration for non-premium users
              raise ValueError(
                  f"Regenerating Virtual Keys is an Enterprise feature, {CommonProxyErrors.not_premium_user.value}"
-@@ -7821,7 +7822,7 @@ def validate_model_max_budget(model_max_budget: dict | None) -> None:
+@@ -7821,7 +7822,7 @@
          if model_max_budget is not None:
              from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
  
@@ -504,18 +1018,17 @@ index d417ec1..ba72a07 100644
                      f"You must have an enterprise license to set model_max_budget. {CommonProxyErrors.not_premium_user.value}"
                  )
 diff --git a/litellm/proxy/management_endpoints/model_management_endpoints.py b/litellm/proxy/management_endpoints/model_management_endpoints.py
-index 0f0d156..ea8520d 100644
 --- a/litellm/proxy/management_endpoints/model_management_endpoints.py
 +++ b/litellm/proxy/management_endpoints/model_management_endpoints.py
-@@ -7,6 +7,7 @@ Endpoints here:
+@@ -7,6 +7,7 @@
  
  model/{model_id}/update - PATCH endpoint for model update.
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  #### MODEL MANAGEMENT ####
  
-@@ -1998,7 +1999,7 @@ class ModelManagementAuthChecks:
+@@ -1998,7 +1999,7 @@
          team_obj: LiteLLM_TeamTable | None = None,
          premium_user: bool = False,
      ) -> Literal[True]:
@@ -524,7 +1037,7 @@ index 0f0d156..ea8520d 100644
              raise HTTPException(
                  status_code=403,
                  detail={"error": CommonProxyErrors.not_premium_user.value},
-@@ -2072,7 +2073,7 @@ class ModelManagementAuthChecks:
+@@ -2072,7 +2073,7 @@
      ) -> Literal[True]:
          if model_params.model_info is None or model_params.model_info.team_id is None:
              return True
@@ -534,15 +1047,14 @@ index 0f0d156..ea8520d 100644
                  status_code=403,
                  detail={"error": CommonProxyErrors.not_premium_user.value},
 diff --git a/litellm/proxy/management_endpoints/organization_endpoints.py b/litellm/proxy/management_endpoints/organization_endpoints.py
-index c8ae7af..47e4534 100644
 --- a/litellm/proxy/management_endpoints/organization_endpoints.py
 +++ b/litellm/proxy/management_endpoints/organization_endpoints.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import math
  
  """
-@@ -98,7 +99,7 @@ async def _enterprise_license_required(
+@@ -98,7 +99,7 @@
  ) -> None:
      from litellm.proxy.proxy_server import premium_user
  
@@ -552,18 +1064,17 @@ index c8ae7af..47e4534 100644
              status_code=403,
              detail={
 diff --git a/litellm/proxy/management_endpoints/team_endpoints.py b/litellm/proxy/management_endpoints/team_endpoints.py
-index 8943f5a..6be6570 100644
 --- a/litellm/proxy/management_endpoints/team_endpoints.py
 +++ b/litellm/proxy/management_endpoints/team_endpoints.py
-@@ -8,6 +8,7 @@ All /team management endpoints
+@@ -8,6 +8,7 @@
  /team/update
  /team/delete
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import asyncio
  import copy
-@@ -2692,12 +2693,12 @@ def _check_team_member_admin_add(
+@@ -2692,12 +2693,12 @@
      premium_user: bool,
  ):
      if isinstance(member, Member) and member.role == "admin":
@@ -578,7 +1089,7 @@ index 8943f5a..6be6570 100644
                      raise ValueError(
                          f"Assigning team admins is a premium feature. Got={m}. {CommonProxyErrors.not_premium_user.value}. "
                      )
-@@ -3783,7 +3784,7 @@ async def team_member_update(
+@@ -3783,7 +3784,7 @@
      if data.team_id is None:
          raise HTTPException(status_code=400, detail={"error": "No team id passed in"})
  
@@ -588,18 +1099,44 @@ index 8943f5a..6be6570 100644
          raise HTTPException(
              status_code=400,
 diff --git a/litellm/proxy/management_endpoints/ui_sso.py b/litellm/proxy/management_endpoints/ui_sso.py
-index c4d8d96..f9409e4 100644
 --- a/litellm/proxy/management_endpoints/ui_sso.py
 +++ b/litellm/proxy/management_endpoints/ui_sso.py
-@@ -7,6 +7,7 @@ Has all /sso/* routes
+@@ -7,6 +7,7 @@
  /sso/debug/login - handles user signing in with SSO and redirects to /sso/debug/callback
  /sso/debug/callback - returns the OpenID object returned by the SSO provider
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import asyncio
  import base64
-@@ -3705,7 +3706,7 @@ class SSOAuthenticationHandler:
+@@ -975,7 +976,7 @@
+ 
+ 
+ async def _raise_if_sso_exceeds_free_user_limit(premium_user: bool, prisma_client: PrismaClient | None) -> None:
+-    """Free tier allows SSO for up to 5 billable users; beyond that requires an Enterprise license."""
++    """Enforce the configured billable-user limit for built-in SSO providers."""
+     if premium_user is True:
+         return
+     if prisma_client is None:
+@@ -985,10 +986,15 @@
+             param="premium_user",
+             code=status.HTTP_403_FORBIDDEN,
+         )
++    from litellm.proxy.oss_unlock import sso_user_limit
++
++    sso_limit: Final = sso_user_limit()
++    if sso_limit == 0:
++        return
+     billable_users: Final = await UserRepository(prisma_client).count_billable_users()
+-    if billable_users and billable_users > 5:
++    if billable_users and billable_users > sso_limit:
+         raise ProxyException(
+-            message="You must be a LiteLLM Enterprise user to use SSO for more than 5 users. If you have a license please set `LITELLM_LICENSE` in your env. If you want to obtain a license meet with us here: https://enterprise.litellm.ai/demo You are seeing this error message because You configured SSO (one of `MICROSOFT_CLIENT_ID`, `GOOGLE_CLIENT_ID`, `GENERIC_CLIENT_ID`, or SAML) in your env. Please unset it",
++            message=f"The configured SSO user limit of {sso_limit} has been exceeded. If you have a license please set `LITELLM_LICENSE` in your env. If you want to obtain a license meet with us here: https://enterprise.litellm.ai/demo You are seeing this error message because You configured SSO (one of `MICROSOFT_CLIENT_ID`, `GOOGLE_CLIENT_ID`, `GENERIC_CLIENT_ID`, or SAML) in your env. Please unset it",
+             type=ProxyErrorTypes.auth_error,
+             param="premium_user",
+             code=status.HTTP_403_FORBIDDEN,
+@@ -3703,7 +3709,7 @@
              user_email=user_email,
              user_role=user_role or LitellmUserRoles.INTERNAL_USER_VIEW_ONLY.value,
              login_method="sso",
@@ -609,18 +1146,17 @@ index c4d8d96..f9409e4 100644
              disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
              server_root_path=get_server_root_path(),
 diff --git a/litellm/proxy/management_helpers/audit_logs.py b/litellm/proxy/management_helpers/audit_logs.py
-index ecd6abe..e927301 100644
 --- a/litellm/proxy/management_helpers/audit_logs.py
 +++ b/litellm/proxy/management_helpers/audit_logs.py
 @@ -1,6 +1,7 @@
  """
  Functions to create audit logs for LiteLLM Proxy
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import asyncio
  import json
-@@ -37,7 +38,7 @@ def is_audit_logging_enabled(store_audit_logs: bool | None = None) -> bool:
+@@ -37,7 +38,7 @@
  
      from litellm.proxy.proxy_server import premium_user
  
@@ -629,7 +1165,7 @@ index ecd6abe..e927301 100644
  
  
  def _allows_litellm_changed_by_header(user_api_key_dict: UserAPIKeyAuth) -> bool:
-@@ -213,7 +214,7 @@ async def create_audit_log_for_update(request_data: LiteLLM_AuditLogs):
+@@ -213,7 +214,7 @@
  
      from litellm.proxy.proxy_server import premium_user, prisma_client
  
@@ -639,15 +1175,14 @@ index ecd6abe..e927301 100644
  
      verbose_proxy_logger.debug("creating audit log for %s", request_data)
 diff --git a/litellm/proxy/management_helpers/auto_router_permissions.py b/litellm/proxy/management_helpers/auto_router_permissions.py
-index a53b704..a744da9 100644
 --- a/litellm/proxy/management_helpers/auto_router_permissions.py
 +++ b/litellm/proxy/management_helpers/auto_router_permissions.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  from collections.abc import Mapping
  from dataclasses import dataclass
  from datetime import datetime
-@@ -109,7 +110,7 @@ class MemberAutoRouterDependencyObjects:
+@@ -109,7 +110,7 @@
  def authorize_member_auto_router_team(
      *, user_api_key_dict: UserAPIKeyAuth, team: LiteLLM_TeamTable, premium_user: bool
  ) -> None:
@@ -657,18 +1192,17 @@ index a53b704..a744da9 100644
      if (
          user_api_key_dict.user_role
 diff --git a/litellm/proxy/management_helpers/team_metadata_validation.py b/litellm/proxy/management_helpers/team_metadata_validation.py
-index 8bb3269..12e9514 100644
 --- a/litellm/proxy/management_helpers/team_metadata_validation.py
 +++ b/litellm/proxy/management_helpers/team_metadata_validation.py
-@@ -8,6 +8,7 @@ write and fails closed: a rejected value surfaces the function's own message
+@@ -8,6 +8,7 @@
  (HTTP 400), while any raised exception or timeout blocks the write with a
  generic message (HTTP 503).
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import asyncio
  import inspect
-@@ -108,7 +109,7 @@ async def run_team_metadata_validation(
+@@ -108,7 +109,7 @@
      timeout_seconds: float,
      unavailable_message: str,
  ) -> None:
@@ -679,10 +1213,9 @@ index 8bb3269..12e9514 100644
              detail={
 diff --git a/litellm/proxy/oss_unlock.py b/litellm/proxy/oss_unlock.py
 new file mode 100644
-index 0000000..cfd1d90
 --- /dev/null
 +++ b/litellm/proxy/oss_unlock.py
-@@ -0,0 +1,80 @@
+@@ -0,0 +1,95 @@
 +"""
 +Per-feature opt-in for capabilities that upstream gates behind a licence check in
 +MIT-licensed code.
@@ -730,6 +1263,7 @@ index 0000000..cfd1d90
 +    "priority_reservation": "TPM/RPM reservation by priority (dynamic rate limiter)",
 +    "request_size_limits": "max_request_size_mb, max_response_size_mb, max_file_size_mb",
 +    "secret_managers": "AWS KMS v2, Google, HashiCorp and CyberArk secret managers",
++    "sso": "Unlimited users for built-in SSO providers",
 +    "spend_reports": "/global/spend/report and get_spend_routes key permission",
 +    "tag_budgets": "Budgets per request tag",
 +    "team_admins": "Team admin role",
@@ -763,16 +1297,50 @@ index 0000000..cfd1d90
 +    raw = os.getenv(ENV_VAR, "")
 +    names = [part.strip().lower() for part in raw.split(",") if part.strip()]
 +    return [n for n in names if n != "all" and n not in FEATURES]
++
++
++def sso_user_limit() -> int:
++    """Return the configured billable-user limit; zero means unlimited."""
++    raw = os.getenv("SSO_FREE_USER_LIMIT")
++    if raw is not None:
++        try:
++            limit = int(raw)
++        except ValueError:
++            raise ValueError("SSO_FREE_USER_LIMIT must be a non-negative integer") from None
++        if limit < 0:
++            raise ValueError("SSO_FREE_USER_LIMIT must be a non-negative integer")
++        return limit
++    return 0 if is_unlocked("sso") else 5
 diff --git a/litellm/proxy/proxy_server.py b/litellm/proxy/proxy_server.py
-index db98ab2..63334e6 100644
 --- a/litellm/proxy/proxy_server.py
 +++ b/litellm/proxy/proxy_server.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import asyncio
  import copy
  import enum
-@@ -1275,6 +1276,10 @@ async def proxy_startup_event(app: FastAPI) -> AsyncGenerator[ProxyLifespanState
+@@ -1041,14 +1042,12 @@
+ )
+ 
+ ### CUSTOM BRANDING [ENTERPRISE FEATURE] ###
+-_title: Final = os.getenv("DOCS_TITLE", "LiteLLM API") if premium_user else "LiteLLM API"
+-_description: Final = (
+-    os.getenv(
+-        "DOCS_DESCRIPTION",
+-        f"Enterprise Edition \n\nProxy Server to call 100+ LLMs in the OpenAI format. {custom_swagger_message}\n\n{ui_message}",
+-    )
+-    if premium_user
+-    else f"Proxy Server to call 100+ LLMs in the OpenAI format. {custom_swagger_message}\n\n{ui_message}"
++# Patched: docs branding is configurable without a licence (see litellm/proxy/branding.py).
++_title: Final = os.getenv("DOCS_TITLE") or (f"{os.getenv('BRAND_NAME')} API" if os.getenv("BRAND_NAME") else "LiteLLM API")
++_description: Final = os.getenv(
++    "DOCS_DESCRIPTION",
++    ("Enterprise Edition \n\n" if premium_user else "")
++    + f"Proxy Server to call 100+ LLMs in the OpenAI format. {custom_swagger_message}\n\n{ui_message}",
+ )
+ 
+ 
+@@ -1278,6 +1277,10 @@
                  raise
  
      ## CHECK PREMIUM USER
@@ -783,7 +1351,42 @@ index db98ab2..63334e6 100644
      verbose_proxy_logger.debug("litellm.proxy.proxy_server.py::startup() - CHECKING PREMIUM USER - %s", premium_user)
      if premium_user is False:
          premium_user = _license_check.is_premium()
-@@ -6825,7 +6830,7 @@ class ProxyConfig:
+@@ -1848,7 +1851,7 @@
+ 
+ def custom_openapi():
+     if app.openapi_schema:
+-        return app.openapi_schema
++        return filter_openapi_paths(app.openapi_schema, LiteLLMRoutes.openai_routes.value)
+     openapi_schema = get_openapi_schema()
+ 
+     # Filter routes to include only specific ones
+@@ -1875,10 +1878,10 @@
+         openapi_schema["servers"] = [{"url": "/" + server_root_path.strip("/")}]
+ 
+     app.openapi_schema = openapi_schema
+-    return app.openapi_schema
+-
+-
+-if os.getenv("DOCS_FILTERED", "False") == "True" and premium_user:
++    return filter_openapi_paths(app.openapi_schema, LiteLLMRoutes.openai_routes.value)
++
++
++if os.getenv("DOCS_FILTERED", "False") == "True":
+     app.openapi = custom_openapi
+ else:
+     # For regular users, use get_openapi_schema to include LLM API schemas
+@@ -2471,6 +2474,10 @@
+ app.add_middleware(RedisRequestBatchMiddleware)
+ app.add_middleware(InFlightRequestsMiddleware)
+ app.add_middleware(SecurityHeadersMiddleware)
++# Patched: env-var branding. Added before GZip so it runs inside it (rewrites uncompressed bodies).
++from litellm.proxy.branding import BrandingMiddleware, filter_openapi_paths
++
++app.add_middleware(BrandingMiddleware)
+ app.add_middleware(GZipBufferedResponseMiddleware)
+ 
+ 
+@@ -6824,7 +6831,7 @@
              ui_access_mode = general_settings.get("ui_access_mode", "all")  # can be either ["admin_only" or "all"]
              ### ALLOWED IP ###
              allowed_ips: Final = general_settings.get("allowed_ips", None)
@@ -792,7 +1395,7 @@ index db98ab2..63334e6 100644
                  raise ValueError(
                      "allowed_ips is an Enterprise Feature. Please add a valid LITELLM_LICENSE to your envionment."
                  )
-@@ -6880,7 +6885,7 @@ class ProxyConfig:
+@@ -6879,7 +6886,7 @@
              _apply_ssrf_general_settings(general_settings)
  
              ## check if user has set a premium feature in general_settings
@@ -801,7 +1404,7 @@ index db98ab2..63334e6 100644
                  raise ValueError("Trying to use `enforced_params`" + CommonProxyErrors.not_premium_user.value)
  
              # check if litellm_license in general_settings
-@@ -7092,7 +7097,7 @@ class ProxyConfig:
+@@ -7091,7 +7098,7 @@
          ## WORKER REGISTRY (Global Control Plane)
          worker_registry_config: Final = config.get("worker_registry", None)
          if worker_registry_config:
@@ -810,7 +1413,7 @@ index db98ab2..63334e6 100644
                  raise ValueError("Trying to use `worker_registry`" + CommonProxyErrors.not_premium_user.value)
              self.worker_registry = [WorkerRegistryEntry(**e) for e in worker_registry_config]
          else:
-@@ -7254,7 +7259,7 @@ class ProxyConfig:
+@@ -7253,7 +7260,7 @@
              model.model_info["db_model"] = True
              model.model_info["blocked"] = bool(getattr(model, "blocked", False))
  
@@ -819,7 +1422,7 @@ index db98ab2..63334e6 100644
              # seeing "created_at", "updated_at", "created_by", "updated_by" is a LiteLLM Enterprise Feature
              model.model_info["created_at"] = getattr(model, "created_at", None)
              model.model_info["updated_at"] = getattr(model, "updated_at", None)
-@@ -17284,7 +17289,7 @@ async def onboarding(invite_link: str, request: Request):
+@@ -17283,7 +17290,7 @@
          user_email=user_obj.user_email,
          user_role=user_obj.user_role,  # pyright: ignore[reportArgumentType]  # nullable DB column, no unset contract
          login_method="username_password",
@@ -828,7 +1431,7 @@ index db98ab2..63334e6 100644
          auth_header_name=general_settings.get("litellm_key_header_name", "Authorization"),
          disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
          server_root_path=get_server_root_path(),
-@@ -17395,7 +17400,7 @@ async def _generate_onboarding_ui_session_token(user_obj: _UserTableRow) -> str:
+@@ -17394,7 +17401,7 @@
          user_email=user_obj.user_email,
          user_role=user_obj.user_role,  # pyright: ignore[reportArgumentType]  # nullable DB column, no unset contract
          login_method="username_password",
@@ -837,7 +1440,7 @@ index db98ab2..63334e6 100644
          auth_header_name=general_settings.get("litellm_key_header_name", "Authorization"),
          disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
          server_root_path=get_server_root_path(),
-@@ -20015,7 +20020,7 @@ app.router.routes = hot_routes_first(app.router.routes)
+@@ -20014,7 +20021,7 @@
  app.add_middleware(
      RequestSizeLimitMiddleware,
      get_max_request_size_mb=lambda: general_settings.get("max_request_size_mb"),
@@ -847,15 +1450,14 @@ index db98ab2..63334e6 100644
  app.add_middleware(
      AdmissionControlMiddleware,
 diff --git a/litellm/proxy/spend_tracking/spend_management_endpoints.py b/litellm/proxy/spend_tracking/spend_management_endpoints.py
-index 3102fc6..1420775 100644
 --- a/litellm/proxy/spend_tracking/spend_management_endpoints.py
 +++ b/litellm/proxy/spend_tracking/spend_management_endpoints.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  #### SPEND MANAGEMENT #####
  import collections
  import json
-@@ -1490,7 +1491,7 @@ async def get_global_spend_report(
+@@ -1490,7 +1491,7 @@
                  "Database not connected. Connect a database to your proxy - https://docs.litellm.ai/docs/simple_proxy#managing-auth---virtual-keys"
              )
  
@@ -864,7 +1466,7 @@ index 3102fc6..1420775 100644
              verbose_proxy_logger.debug("accessing /spend/report but not a premium user")
              raise ValueError("/spend/report endpoint " + CommonProxyErrors.not_premium_user.value)
          db_response: Sequence[Mapping[str, object]] | None
-@@ -1805,7 +1806,7 @@ def _spend_report_prereqs() -> PrismaClient:
+@@ -1805,7 +1806,7 @@
              status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
              detail=CommonProxyErrors.db_not_connected_error.value,
          )
@@ -874,45 +1476,55 @@ index 3102fc6..1420775 100644
              status_code=status.HTTP_403_FORBIDDEN,
              detail="/spend/report endpoint " + CommonProxyErrors.not_premium_user.value,
 diff --git a/litellm/proxy/utils.py b/litellm/proxy/utils.py
-index f77e248..67f2de9 100644
 --- a/litellm/proxy/utils.py
 +++ b/litellm/proxy/utils.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked
  import asyncio
  import contextlib
  import copy
-@@ -8242,7 +8243,7 @@ def handle_exception_on_proxy(e: Exception, litellm_call_id: str | None = None)
+@@ -7085,6 +7086,11 @@
+     if html is None:
+         raise ValueError(f"No HTML body provided for SMTP email. {html}")
+ 
++    # Patched: env-var branding (see litellm/proxy/branding.py).
++    from litellm.proxy.branding import brand_email
++
++    subject, html = brand_email(subject, html)
++
+     ## EMAIL SETUP ##
+     email_message: Final = MIMEMultipart()
+     email_message["From"] = sender_email
+@@ -8237,7 +8243,7 @@
      )
  
  
 -def _premium_user_check(feature: str | None = None):
-+def _premium_user_check(feature: str | None = None, unlock: str = "key_team_settings"):
++def _premium_user_check(feature: str | None = None, unlock: str | None = None):
      """
      Raises an HTTPException if the user is not a premium user
      """
-@@ -8255,7 +8256,7 @@ def _premium_user_check(feature: str | None = None):
+@@ -8250,7 +8256,7 @@
              f"This feature is only available for LiteLLM Enterprise users. {CommonProxyErrors.not_premium_user.value}"
          )
  
 -    if not premium_user:
-+    if not _premium_or_unlocked(premium_user, unlock):
++    if not premium_user and not (unlock is not None and _oss_unlocked(unlock)):
          raise HTTPException(
              status_code=403,
              detail={"error": detail_msg},
 diff --git a/litellm/router_strategy/budget_limiter.py b/litellm/router_strategy/budget_limiter.py
-index a792654..343d44e 100644
 --- a/litellm/router_strategy/budget_limiter.py
 +++ b/litellm/router_strategy/budget_limiter.py
-@@ -17,6 +17,7 @@ anthropic:
+@@ -17,6 +17,7 @@
          time_period: 7d
  ```
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  
  import asyncio
  import builtins
-@@ -917,7 +918,7 @@ class RouterBudgetLimiting(CustomLogger):
+@@ -917,7 +918,7 @@
              return
          from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
  
@@ -922,18 +1534,17 @@ index a792654..343d44e 100644
  
          if self.tag_budget_config is None:
 diff --git a/litellm/secret_managers/aws_secret_manager.py b/litellm/secret_managers/aws_secret_manager.py
-index 1aed44e..2c59fab 100644
 --- a/litellm/secret_managers/aws_secret_manager.py
 +++ b/litellm/secret_managers/aws_secret_manager.py
-@@ -7,6 +7,7 @@ Requires:
+@@ -7,6 +7,7 @@
  * `os.environ["AWS_REGION_NAME"],
  * `pip install boto3>=1.28.57`
  """
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked
  
  import ast
  import base64
-@@ -64,7 +65,7 @@ class AWSKeyManagementService_V2:
+@@ -64,7 +65,7 @@
              or os.getenv("LITELLM_SECRET_AWS_KMS_LITELLM_LICENSE", None) is not None
          ):
              is_litellm_license_in_env = True
@@ -943,15 +1554,14 @@ index 1aed44e..2c59fab 100644
                  "AWSKeyManagementService V2 is an Enterprise Feature. Please add a valid LITELLM_LICENSE to your envionment."
              )
 diff --git a/litellm/secret_managers/cyberark_secret_manager.py b/litellm/secret_managers/cyberark_secret_manager.py
-index f8e1748..491ca02 100644
 --- a/litellm/secret_managers/cyberark_secret_manager.py
 +++ b/litellm/secret_managers/cyberark_secret_manager.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import asyncio
  import base64
  import os
-@@ -59,7 +60,7 @@ class CyberArkSecretManager(BaseSecretManager):
+@@ -59,7 +60,7 @@
          _refresh_interval: Final = int(os.environ.get("CYBERARK_REFRESH_INTERVAL", "300"))
          self.cache = InMemoryCache(default_ttl=_refresh_interval)
  
@@ -961,15 +1571,14 @@ index f8e1748..491ca02 100644
                  f"CyberArk secret manager is only available for premium users. {CommonProxyErrors.not_premium_user.value}"
              )
 diff --git a/litellm/secret_managers/google_secret_manager.py b/litellm/secret_managers/google_secret_manager.py
-index 913fd4d..d051159 100644
 --- a/litellm/secret_managers/google_secret_manager.py
 +++ b/litellm/secret_managers/google_secret_manager.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import base64
  import os
  from typing import Final
-@@ -25,7 +26,7 @@ class GoogleSecretManager(GCSBucketBase):
+@@ -25,7 +26,7 @@
          """
          from litellm.proxy.proxy_server import premium_user
  
@@ -979,15 +1588,14 @@ index 913fd4d..d051159 100644
                  f"Google Secret Manager requires an Enterprise License {CommonProxyErrors.not_premium_user.value}"
              )
 diff --git a/litellm/secret_managers/hashicorp_secret_manager.py b/litellm/secret_managers/hashicorp_secret_manager.py
-index 2752389..b849003 100644
 --- a/litellm/secret_managers/hashicorp_secret_manager.py
 +++ b/litellm/secret_managers/hashicorp_secret_manager.py
 @@ -1,3 +1,4 @@
-+from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
++from litellm.proxy.oss_unlock import premium_or_unlocked as _premium_or_unlocked
  import os
  from collections.abc import Mapping
  from types import MappingProxyType
-@@ -119,7 +120,7 @@ class HashicorpSecretManager(BaseSecretManager):
+@@ -119,7 +120,7 @@
  
          self._verify_required_credentials_exist()
  

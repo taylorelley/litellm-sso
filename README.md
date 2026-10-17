@@ -1,6 +1,6 @@
 # litellm-sso
 
-Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with three changes, all configured by environment variables:
+Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with one generated patch. Runtime changes are configured by environment variables:
 
 1. **SSO user limit**: read from `SSO_FREE_USER_LIMIT` instead of being fixed at 5.
 2. **Branding**: product name, titles, links, colours, fonts and custom CSS for the UI, server-rendered pages, emails and API docs.
@@ -8,37 +8,51 @@ Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image wi
 
 ## 1. SSO user limit
 
-`patches/0001-sso-user-limit.patch` edits `_raise_if_sso_exceeds_free_user_limit` in
-`litellm/proxy/management_endpoints/ui_sso.py`, which is MIT-licensed code (outside `enterprise/`).
+`LITELLM_OSS_UNLOCK=sso` removes the billable-user cap for built-in SSO providers. `all` includes SSO. The original `SSO_FREE_USER_LIMIT` setting is still supported and takes priority when set. The database requirement and the premium-user bypass stay as upstream.
 
 | `SSO_FREE_USER_LIMIT` | Behaviour |
 |---|---|
-| unset | Upstream default (5 users) |
+| unset | 5 users, or unlimited when `sso` / `all` is unlocked |
 | `N` | SSO allowed for up to N billable users |
 | `0` | No limit |
+| negative, empty or invalid | Configuration error, never silently unlimited |
+
+| Variable | Type | Default | Example | Effect |
+|---|---|---|---|---|
+| `LITELLM_OSS_UNLOCK` | comma-separated feature names | unset, all gates locked | `sso,audit_logs` | Enable listed MIT-code features; `all` includes every name in the feature table |
+| `SSO_FREE_USER_LIMIT` | non-negative integer | 5, or 0 with sso/all unlocked | `20` | Explicit value overrides sso/all; 0 is unlimited |
+
+Feature names ignore case and surrounding spaces. Unknown names produce a startup warning and remain disabled. Unlocking a feature does not configure it: upstream settings, credentials, permissions and dependencies still apply. The global premium/licence state is not changed.
 
 Do not enable the custom SSO handler (`custom_sso_handler`), which lives in enterprise-licensed code. The opt-in SSO debug endpoint keeps its upstream licence check.
 
 ## 2. Branding
 
-`patches/0002-branding.patch` adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is modified: text responses are rewritten as they're served, so changing an env var and restarting changes the branding, and unsetting everything restores stock behaviour. With no `BRAND_*` variable set, the middleware is a pass-through.
+The patch adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is modified: text responses are rewritten as they're served, so changing an env var and restarting changes the branding, and unsetting everything restores stock behaviour. With no `BRAND_*` variable set, the middleware is a pass-through. Whitespace-only branding values are treated as unset, except `BRAND_EMAIL_FOOTER`, where an empty value removes the footer. CSS values containing `<` are rejected. Set these values in the container environment and restart after changes. Branding settings are cached after first use; the unlock switch and SSO limit are read at call time. API docs settings are read during module import, so set them before startup rather than in YAML `environment_variables`.
 
-| Variable | Effect |
-|---|---|
-| `BRAND_NAME` | Replaces "LiteLLM" in the UI, sign-in and CLI auth pages, emails, and the API docs title |
-| `BRAND_TITLE` | Browser tab title (default `<BRAND_NAME> Dashboard`) |
-| `BRAND_DESCRIPTION` | UI meta description |
-| `BRAND_DOCS_URL` | Replaces links to docs.litellm.ai |
-| `BRAND_GITHUB_URL` | Replaces links to github.com/BerriAI/litellm |
-| `BRAND_WEBSITE_URL` | Replaces links to litellm.ai |
-| `BRAND_PRIMARY_COLOR` / `BRAND_PRIMARY_FOREGROUND` | Primary colour and the text on it (buttons, active nav, focus ring), light mode |
-| `BRAND_PRIMARY_COLOR_DARK` / `BRAND_PRIMARY_FOREGROUND_DARK` | Same for dark mode (default to the light values) |
-| `BRAND_CSS_VARS` / `BRAND_CSS_VARS_DARK` | Any UI theme variable, e.g. `sidebar=#f5f7fa;radius=0.25rem;background=#fff` |
-| `BRAND_FONT_FAMILY` / `BRAND_FONT_URL` | UI font, and a stylesheet to load it from |
-| `BRAND_CUSTOM_CSS` / `BRAND_CUSTOM_CSS_URL` | Extra CSS, inline or from a URL, for anything the variables don't cover |
-| `BRAND_EMAIL_FOOTER` | HTML replacing the default email footer; set to empty to remove it |
-| `BRAND_PRESERVE_PHRASES` | Extra `\|`-separated phrases containing "LiteLLM" to leave unchanged |
-| `DOCS_TITLE` / `DOCS_DESCRIPTION` / `DOCS_FILTERED` | API docs title, description, and hiding admin routes from the docs (no longer licence-gated) |
+| Variable | Type | Default | Example | Effect |
+|---|---|---|---|---|
+| `BRAND_NAME` | string | unset | `Acme AI` | Product name in UI, server pages, emails and default API title |
+| `BRAND_TITLE` | string | `<BRAND_NAME> Dashboard`, otherwise stock | `AI Portal` | UI browser title; overrides name-derived title |
+| `BRAND_DESCRIPTION` | string | stock description | `Internal AI gateway` | UI meta description |
+| `BRAND_DOCS_URL` | URL | upstream links | `https://wiki.example/ai` | Replace docs.litellm.ai links |
+| `BRAND_GITHUB_URL` | URL | upstream links | `https://git.example/ai` | Replace GitHub repository links |
+| `BRAND_WEBSITE_URL` | URL | upstream links | `https://example.internal` | Replace litellm.ai links |
+| `BRAND_PRIMARY_COLOR` | CSS value | stock theme | `#0a5c8a` | Primary, sidebar-primary and ring in light mode |
+| `BRAND_PRIMARY_FOREGROUND` | CSS value | stock theme | `#ffffff` | Primary and sidebar-primary text in light mode |
+| `BRAND_PRIMARY_COLOR_DARK` | CSS value | BRAND_PRIMARY_COLOR | `#4fb3e8` | Primary, sidebar-primary and ring in dark mode |
+| `BRAND_PRIMARY_FOREGROUND_DARK` | CSS value | BRAND_PRIMARY_FOREGROUND | `#001122` | Primary and sidebar-primary text in dark mode |
+| `BRAND_CSS_VARS` | name=value pairs | none | `sidebar=#f5f7fa;radius=0.25rem` | Light CSS overrides; these win over primary shortcuts |
+| `BRAND_CSS_VARS_DARK` | name=value pairs | none | `background=#111;card=#222` | Dark CSS overrides; these win over dark primary shortcuts |
+| `BRAND_FONT_FAMILY` | CSS font-family | stock font | `"Source Sans 3", sans-serif` | UI font family |
+| `BRAND_FONT_URL` | stylesheet URL | none | `https://fonts.example/font.css` | Font stylesheet link |
+| `BRAND_CUSTOM_CSS` | CSS text | none | `body{letter-spacing:0.01em}` | Inline UI CSS after variable overrides |
+| `BRAND_CUSTOM_CSS_URL` | stylesheet URL | none | `https://cdn.example/brand.css` | Extra stylesheet loaded after inline overrides |
+| `BRAND_EMAIL_FOOTER` | HTML | stock footer | `<footer>Internal service</footer>` | Replace email footer; an explicitly empty value removes it |
+| `BRAND_PRESERVE_PHRASES` | pipe-separated strings | built-in protected phrases | `LiteLLM Proxy Server` | Extra exact phrases excluded from name replacement |
+| `DOCS_TITLE` | string | `<BRAND_NAME> API`, otherwise LiteLLM API | `Acme API` | OpenAPI and API documentation title |
+| `DOCS_DESCRIPTION` | string | upstream description | `Internal model gateway` | API documentation description |
+| `DOCS_FILTERED` | exact string True or False | False | `True` | Remove admin routes from API docs; does not disable those routes |
 
 Logos and favicon use upstream's existing variables, which already work without a licence: `UI_LOGO_PATH`, `UI_LOGO_PATH_DARK`, `LITELLM_FAVICON_URL` and `EMAIL_LOGO_URL`.
 
@@ -51,14 +65,14 @@ UI theme variables you can set with `BRAND_CSS_VARS` include `background`, `fore
 
 ## 3. Licence-gated features in MIT code
 
-`patches/0003-oss-unlock.patch` adds `litellm/proxy/oss_unlock.py` and makes each licence check in MIT-licensed code opt-in per feature:
+The patch adds `litellm/proxy/oss_unlock.py` and makes the audited licence checks in MIT-licensed code opt-in per feature:
 
 ```
 LITELLM_OSS_UNLOCK=jwt_auth,audit_logs,priority_reservation,ui   # specific features
 LITELLM_OSS_UNLOCK=all                                            # everything below
 ```
 
-Unset, every gate behaves exactly as upstream. Misspelt names are ignored with a warning at startup.
+With no unlock, SSO limit or branding settings, upstream behavior is preserved. Misspelt names are ignored with a warning at startup.
 
 | Feature | What it enables |
 |---|---|
@@ -85,6 +99,7 @@ Unset, every gate behaves exactly as upstream. Misspelt names are ignored with a
 | `priority_reservation` | TPM/RPM reservation by priority (`litellm_settings.priority_reservation`) |
 | `request_size_limits` | `max_request_size_mb`, `max_response_size_mb`, `max_file_size_mb` |
 | `secret_managers` | AWS KMS v2, Google, HashiCorp and CyberArk secret managers |
+| `sso` | Unlimited users for built-in SSO providers |
 | `spend_reports` | `/global/spend/report` and the `get_spend_routes` key permission |
 | `tag_budgets` | Budgets per request tag |
 | `team_admins` | Team admin role |
@@ -96,19 +111,43 @@ Unset, every gate behaves exactly as upstream. Misspelt names are ignored with a
 
 **Not changed:** the licence health endpoint still reports `community`, and user/team count limits only apply to signed licences, so they never block without one.
 
-To regenerate this patch for a new upstream version, apply 0001 and 0002, then run `scripts/apply_oss_unlock.py` against the checkout. Each edit must match exactly once near a unique anchor, so the script fails rather than guessing if upstream moved a gate.
+## Patch maintenance
+
+`patches/0001-oss-customizations.patch` contains all changes. `scripts/branding.py` and `scripts/oss_unlock.py` are the runtime module sources. `scripts/generate_patch.py` owns the integration edits. Edit these sources, then regenerate the patch. Do not edit the generated patch by hand.
+
+Both local validation and CI use the same command against a **clean** upstream checkout:
+
+```bash
+python scripts/apply_patch.py upstream --check
+python scripts/apply_patch.py upstream
+```
+
+The check regenerates the patch in memory, compares it with the committed patch, parses every changed Python file, checks added imports and target paths, then runs `git apply --check`. Applying uses one atomic `git apply` operation. Drift, stale generated output and repeat application fail without partially applying a patch. The check and generator do not modify the upstream checkout.
+
+Each integration edit uses an exact source match or a unique anchor with a bounded search. If an upstream upgrade breaks an anchor, review and update that edit before regenerating. The shared licence helper requires an explicit feature name at reviewed call sites. New upstream callers keep their licence checks.
 
 ## Licence
 
-Upstream LiteLLM outside `enterprise/` is MIT. This repo carries only the patches, tests and build workflow. It is not affiliated with or endorsed by BerriAI; refer to the built image by this repo's name, not as "LiteLLM Enterprise". The build fails if a patch ever references `enterprise/` code.
+Upstream LiteLLM outside `enterprise/` is MIT under its root licence. This repo contains patch sources, a generated patch, tests and a build workflow. It is not affiliated with or endorsed by BerriAI. Refer to the built image by this repo's name, not as "LiteLLM Enterprise".
+
+Validation rejects patch targets outside `litellm/`, enterprise paths, and added direct or literal dynamic imports of `enterprise` / `litellm_enterprise`. This static check does not audit transitive imports or runtime behavior. Existing upstream enterprise integrations keep their checks. Preserve upstream licence notices when distributing images.
 
 ## Upgrading
 
-1. Change `UPSTREAM_REF` to the new upstream tag and push.
-2. The workflow checks out that tag, applies the patches in order, runs the branding tests, and builds and pushes `ghcr.io/<owner>/litellm-sso:<tag>`.
-3. If upstream has moved the code a patch touches, `git apply --check` fails the build. Regenerate that patch against the new tag.
+Start with a clean checkout of the new upstream tag or commit, update `UPSTREAM_REF`, then run:
 
-You can also run the workflow manually with any upstream tag or commit.
+```bash
+python scripts/generate_patch.py upstream
+python scripts/apply_patch.py upstream --check
+python scripts/apply_patch.py upstream
+BRANDING_MODULE=upstream/litellm/proxy/branding.py \
+OSS_UNLOCK_MODULE=upstream/litellm/proxy/oss_unlock.py \
+python -m pytest -q tests
+```
+
+Commit the source changes, `UPSTREAM_REF` and regenerated patch together. Pull requests validate the patch, run tests on Python 3.12 and 3.13, then build and smoke-test a candidate image without publishing. Main-branch pushes and manual runs use the same checks. Publishing tags happens only after that exact image ID passes smoke tests. A failed build, import, UI syntax check, runtime test or HTTP smoke test blocks publishing.
+
+Images receive the upstream tag and an upstream-tag plus patch-commit tag. `latest` changes only for main-branch builds using `UPSTREAM_REF`. A manual run may specify another upstream ref, but its generated patch must still match. Regenerate and commit it first when upstream code differs.
 
 ## Use
 
@@ -117,7 +156,9 @@ services:
   litellm:
     image: ghcr.io/<owner>/litellm-sso:v1.105.1
     environment:
-      SSO_FREE_USER_LIMIT: "0"
+      LITELLM_OSS_UNLOCK: sso
+      # Optional finite cap, even with sso/all enabled:
+      # SSO_FREE_USER_LIMIT: "20"
       GENERIC_CLIENT_ID: ...
       GENERIC_CLIENT_SECRET: ...
       GENERIC_AUTHORIZATION_ENDPOINT: ...
@@ -140,5 +181,20 @@ services:
 ## Tests
 
 ```bash
-BRANDING_MODULE=path/to/patched/litellm/proxy/branding.py pytest tests/
+pip install -r requirements-test.txt
+BRANDING_MODULE=upstream/litellm/proxy/branding.py \
+OSS_UNLOCK_MODULE=upstream/litellm/proxy/oss_unlock.py \
+python -m pytest -q tests
 ```
+
+Unit tests exercise all audited gate sites with locked, selective, unrelated and all-feature settings, plus premium/false/unknown states. They cover SSO limits, defaults and precedence, every branding setting, email footers, JavaScript escaping, middleware behavior, patch failure handling, and README coverage. Node.js is needed for JavaScript regression tests. Keep the upstream directory as a Git checkout: gate comparisons use its unpatched `HEAD` as the expected behavior.
+
+The candidate-image tests verify the installed bytes and import every patched module, parse rewritten JavaScript from the actual built UI, and run installed SSO, organization, audit and shared-gate checks. HTTP smoke tests start the stock, SSO-enabled and all-features-plus-branding configurations. They check readiness, liveness, authentication, model listing, a mock completion, SSE streaming, API docs, UI, compression and asset serving. No external model credentials are needed.
+
+```bash
+python scripts/smoke_image.py litellm-sso:candidate --upstream upstream --logs smoke-logs
+```
+
+Test tooling variables are `BRANDING_MODULE` (default `upstream/litellm/proxy/branding.py`) and `OSS_UNLOCK_MODULE` (default `upstream/litellm/proxy/oss_unlock.py`). They select files for unit tests and are not image runtime settings. CI's `REQUESTED_REF`, `IMAGE_REPOSITORY`, `TESTED_IMAGE_ID` and `IMAGE_TAGS` are internal workflow values, not proxy settings. The smoke harness uses upstream's `LITELLM_LOCAL_MODEL_COST_MAP=True` to avoid fetching prices.
+
+These checks reduce release risk. They do not prove every upstream feature or deployment is correct. Live Authentik/OIDC login, real database migrations, production secret managers, external logging destinations and real model providers still need environment-specific acceptance tests. Keep a known-good immutable image tag or digest for rollback. Protect the default branch with the unit-test and image-smoke checks required before merging.
