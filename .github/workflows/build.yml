@@ -29,6 +29,8 @@ jobs:
       upstream_sha: ${{ steps.upstream.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Resolve upstream ref and image tags
         id: ref
@@ -37,15 +39,17 @@ jobs:
           IMAGE_REPOSITORY: ${{ github.repository }}
         run: |
           python - <<'PY'
-          import os, re
+          import hashlib, os, re
           from pathlib import Path
           default = Path("UPSTREAM_REF").read_text().strip()
           ref = os.environ.get("REQUESTED_REF") or default
           if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,126}", ref):
               raise SystemExit("Invalid upstream ref")
           tag = re.sub(r"[^A-Za-z0-9_.-]", "-", ref)
+          ref_hash = hashlib.sha256(ref.encode()).hexdigest()[:16]
+          tag = f"{tag[:98]}-{ref_hash}"
           image = "ghcr.io/" + os.environ["IMAGE_REPOSITORY"].lower()
-          tags = [f"{image}:{tag}", f"{image}:{tag[:114]}-{os.environ['GITHUB_SHA'][:12]}"]
+          tags = [f"{image}:{tag}", f"{image}:{tag}-{os.environ['GITHUB_SHA'][:12]}"]
           if ref == default and os.environ["GITHUB_REF"] == "refs/heads/main":
               tags.append(f"{image}:latest")
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:

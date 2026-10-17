@@ -136,9 +136,11 @@ general_settings:
         require(request(base, asset.group(1))[0] == 200, "UI asset could not be served")
         print(f"PASS {name}: startup, auth, models, completion, SSE, docs, UI, compression, assets", flush=True)
     finally:
-        logs = docker("logs", container, capture_output=True)
-        (directory / f"{name}.log").write_text(logs.stdout + logs.stderr)
-        docker("rm", "--force", container, capture_output=True)
+        try:
+            logs = docker("logs", container, capture_output=True)
+            (directory / f"{name}.log").write_text(logs.stdout + logs.stderr)
+        finally:
+            docker("rm", "--force", container, capture_output=True)
 
 
 def main() -> None:
