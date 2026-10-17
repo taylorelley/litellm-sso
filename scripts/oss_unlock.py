@@ -45,6 +45,7 @@ FEATURES: Final[dict[str, str]] = {
     "priority_reservation": "TPM/RPM reservation by priority (dynamic rate limiter)",
     "request_size_limits": "max_request_size_mb, max_response_size_mb, max_file_size_mb",
     "secret_managers": "AWS KMS v2, Google, HashiCorp and CyberArk secret managers",
+    "sso": "Unlimited users for built-in SSO providers",
     "spend_reports": "/global/spend/report and get_spend_routes key permission",
     "tag_budgets": "Budgets per request tag",
     "team_admins": "Team admin role",
@@ -78,3 +79,17 @@ def unknown_features() -> list[str]:
     raw = os.getenv(ENV_VAR, "")
     names = [part.strip().lower() for part in raw.split(",") if part.strip()]
     return [n for n in names if n != "all" and n not in FEATURES]
+
+
+def sso_user_limit() -> int:
+    """Return the configured billable-user limit; zero means unlimited."""
+    raw = os.getenv("SSO_FREE_USER_LIMIT")
+    if raw is not None:
+        try:
+            limit = int(raw)
+        except ValueError:
+            raise ValueError("SSO_FREE_USER_LIMIT must be a non-negative integer") from None
+        if limit < 0:
+            raise ValueError("SSO_FREE_USER_LIMIT must be a non-negative integer")
+        return limit
+    return 0 if is_unlocked("sso") else 5

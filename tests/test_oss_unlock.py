@@ -1,6 +1,6 @@
 """Tests for litellm/proxy/oss_unlock.py, loaded from the patched upstream checkout.
 
-    OSS_UNLOCK_MODULE=path/to/litellm/proxy/oss_unlock.py pytest tests/
+OSS_UNLOCK_MODULE=path/to/litellm/proxy/oss_unlock.py pytest tests/
 """
 
 import importlib.util
@@ -17,6 +17,7 @@ _spec.loader.exec_module(mod)
 @pytest.fixture(autouse=True)
 def clean(monkeypatch):
     monkeypatch.delenv("LITELLM_OSS_UNLOCK", raising=False)
+    monkeypatch.delenv("SSO_FREE_USER_LIMIT", raising=False)
 
 
 def test_default_is_locked_and_preserves_value():
@@ -44,3 +45,28 @@ def test_unknown_names(monkeypatch):
     assert mod.unknown_features() == ["nope", "also_nope"]
     with pytest.raises(KeyError):
         mod.is_unlocked("not_a_feature")
+
+
+@pytest.mark.parametrize("raw, expected", [(None, 5), ("0", 0), ("12", 12), (" 8 ", 8)])
+def test_sso_limit(monkeypatch, raw, expected):
+    monkeypatch.delenv("SSO_FREE_USER_LIMIT", raising=False)
+    if raw is not None:
+        monkeypatch.setenv("SSO_FREE_USER_LIMIT", raw)
+    assert mod.sso_user_limit() == expected
+
+
+@pytest.mark.parametrize("feature", ["sso", "all"])
+def test_sso_unlock_and_explicit_limit_precedence(monkeypatch, feature):
+    monkeypatch.delenv("SSO_FREE_USER_LIMIT", raising=False)
+    monkeypatch.setenv("LITELLM_OSS_UNLOCK", feature)
+    assert mod.sso_user_limit() == 0
+    monkeypatch.setenv("SSO_FREE_USER_LIMIT", "7")
+    assert mod.sso_user_limit() == 7
+
+
+@pytest.mark.parametrize("raw", ["", "no", "-1", "2.5"])
+def test_invalid_sso_limit_is_rejected(monkeypatch, raw):
+    monkeypatch.setenv("SSO_FREE_USER_LIMIT", raw)
+    monkeypatch.setenv("LITELLM_OSS_UNLOCK", "all")
+    with pytest.raises(ValueError, match="SSO_FREE_USER_LIMIT must be a non-negative integer"):
+        mod.sso_user_limit()

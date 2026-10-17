@@ -262,3 +262,26 @@ def test_etag_changes_with_branding(monkeypatch):
     cfg(monkeypatch, BRAND_NAME="Other")
     etag2 = make_app().get("/ui/index.html").headers["etag"]
     assert etag1 != etag2
+
+
+@pytest.mark.parametrize("first", ["/login", "/ui/", "/ui/asset.js"])
+def test_cache_respects_html_and_ui_context(monkeypatch, first):
+    cfg(monkeypatch, BRAND_NAME="Acme & Co", BRAND_CUSTOM_CSS="body{color:red}")
+    content = "<html><head></head><body>LiteLLM</body></html>"
+
+    async def page(request):
+        media_type = "application/javascript" if request.url.path.endswith(".js") else "text/html"
+        return Response(content, media_type=media_type)
+
+    app = Starlette(routes=[Route("/login", page), Route("/ui/", page), Route("/ui/asset.js", page)])
+    app.add_middleware(branding.BrandingMiddleware)
+    with TestClient(app) as client:
+        client.get(first)
+        login = client.get("/login").text
+        ui = client.get("/ui/").text
+        js = client.get("/ui/asset.js").text
+    assert "brand-overrides" not in login
+    assert "brand-overrides" in ui
+    assert "brand-overrides" not in js
+    assert "Acme &amp; Co" in login and "Acme &amp; Co" in ui
+    assert "Acme & Co" in js

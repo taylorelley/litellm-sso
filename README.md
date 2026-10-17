@@ -1,6 +1,6 @@
 # litellm-sso
 
-Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with three changes, all configured by environment variables:
+Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with one generated patch. Runtime changes are configured by environment variables:
 
 1. **SSO user limit**: read from `SSO_FREE_USER_LIMIT` instead of being fixed at 5.
 2. **Branding**: product name, titles, links, colours, fonts and custom CSS for the UI, server-rendered pages, emails and API docs.
@@ -8,20 +8,20 @@ Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image wi
 
 ## 1. SSO user limit
 
-`patches/0001-sso-user-limit.patch` edits `_raise_if_sso_exceeds_free_user_limit` in
-`litellm/proxy/management_endpoints/ui_sso.py`, which is MIT-licensed code (outside `enterprise/`).
+`LITELLM_OSS_UNLOCK=sso` removes the billable-user cap for built-in SSO providers. `all` includes SSO. The original `SSO_FREE_USER_LIMIT` setting is still supported and takes priority when set. The database requirement and the premium-user bypass stay as upstream.
 
 | `SSO_FREE_USER_LIMIT` | Behaviour |
 |---|---|
-| unset | Upstream default (5 users) |
+| unset | 5 users, or unlimited when `sso` / `all` is unlocked |
 | `N` | SSO allowed for up to N billable users |
 | `0` | No limit |
+| negative, empty or invalid | Configuration error, never silently unlimited |
 
 Do not enable the custom SSO handler (`custom_sso_handler`), which lives in enterprise-licensed code. The opt-in SSO debug endpoint keeps its upstream licence check.
 
 ## 2. Branding
 
-`patches/0002-branding.patch` adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is modified: text responses are rewritten as they're served, so changing an env var and restarting changes the branding, and unsetting everything restores stock behaviour. With no `BRAND_*` variable set, the middleware is a pass-through.
+The patch adds `litellm/proxy/branding.py` and wires it in. Nothing on disk is modified: text responses are rewritten as they're served, so changing an env var and restarting changes the branding, and unsetting everything restores stock behaviour. With no `BRAND_*` variable set, the middleware is a pass-through.
 
 | Variable | Effect |
 |---|---|
@@ -51,14 +51,14 @@ UI theme variables you can set with `BRAND_CSS_VARS` include `background`, `fore
 
 ## 3. Licence-gated features in MIT code
 
-`patches/0003-oss-unlock.patch` adds `litellm/proxy/oss_unlock.py` and makes each licence check in MIT-licensed code opt-in per feature:
+The patch adds `litellm/proxy/oss_unlock.py` and makes each licence check in MIT-licensed code opt-in per feature:
 
 ```
 LITELLM_OSS_UNLOCK=jwt_auth,audit_logs,priority_reservation,ui   # specific features
 LITELLM_OSS_UNLOCK=all                                            # everything below
 ```
 
-Unset, every gate behaves exactly as upstream. Misspelt names are ignored with a warning at startup.
+With no unlock, SSO limit or branding settings, upstream behavior is preserved. Misspelt names are ignored with a warning at startup.
 
 | Feature | What it enables |
 |---|---|
@@ -85,6 +85,7 @@ Unset, every gate behaves exactly as upstream. Misspelt names are ignored with a
 | `priority_reservation` | TPM/RPM reservation by priority (`litellm_settings.priority_reservation`) |
 | `request_size_limits` | `max_request_size_mb`, `max_response_size_mb`, `max_file_size_mb` |
 | `secret_managers` | AWS KMS v2, Google, HashiCorp and CyberArk secret managers |
+| `sso` | Unlimited users for built-in SSO providers |
 | `spend_reports` | `/global/spend/report` and the `get_spend_routes` key permission |
 | `tag_budgets` | Budgets per request tag |
 | `team_admins` | Team admin role |
@@ -96,19 +97,43 @@ Unset, every gate behaves exactly as upstream. Misspelt names are ignored with a
 
 **Not changed:** the licence health endpoint still reports `community`, and user/team count limits only apply to signed licences, so they never block without one.
 
-To regenerate this patch for a new upstream version, apply 0001 and 0002, then run `scripts/apply_oss_unlock.py` against the checkout. Each edit must match exactly once near a unique anchor, so the script fails rather than guessing if upstream moved a gate.
+## Patch maintenance
+
+`patches/0001-oss-customizations.patch` contains all changes. `scripts/branding.py` and `scripts/oss_unlock.py` are the runtime module sources. `scripts/generate_patch.py` owns the integration edits. Edit these sources, then regenerate the patch. Do not edit the generated patch by hand.
+
+Both local validation and CI use the same command against a **clean** upstream checkout:
+
+```bash
+python scripts/apply_patch.py upstream --check
+python scripts/apply_patch.py upstream
+```
+
+The check regenerates the patch in memory, compares it with the committed patch, parses every changed Python file, checks added imports and target paths, then runs `git apply --check`. Applying uses one atomic `git apply` operation. Drift, stale generated output and repeat application fail without partially applying a patch. The check and generator do not modify the upstream checkout.
+
+Each integration edit uses an exact source match or a unique anchor with a bounded search. If an upstream upgrade breaks an anchor, review and update that edit before regenerating. The shared licence helper requires an explicit feature name at reviewed call sites. New upstream callers keep their licence checks.
 
 ## Licence
 
-Upstream LiteLLM outside `enterprise/` is MIT. This repo carries only the patches, tests and build workflow. It is not affiliated with or endorsed by BerriAI; refer to the built image by this repo's name, not as "LiteLLM Enterprise". The build fails if a patch ever references `enterprise/` code.
+Upstream LiteLLM outside `enterprise/` is MIT under its root licence. This repo contains patch sources, a generated patch, tests and a build workflow. It is not affiliated with or endorsed by BerriAI. Refer to the built image by this repo's name, not as "LiteLLM Enterprise".
+
+Validation rejects patch targets outside `litellm/`, enterprise paths, and added direct or literal dynamic imports of `enterprise` / `litellm_enterprise`. This static check does not audit transitive imports or runtime behavior. Existing upstream enterprise integrations keep their checks. Preserve upstream licence notices when distributing images.
 
 ## Upgrading
 
-1. Change `UPSTREAM_REF` to the new upstream tag and push.
-2. The workflow checks out that tag, applies the patches in order, runs the branding tests, and builds and pushes `ghcr.io/<owner>/litellm-sso:<tag>`.
-3. If upstream has moved the code a patch touches, `git apply --check` fails the build. Regenerate that patch against the new tag.
+Start with a clean checkout of the new upstream tag or commit, update `UPSTREAM_REF`, then run:
 
-You can also run the workflow manually with any upstream tag or commit.
+```bash
+python scripts/generate_patch.py upstream
+python scripts/apply_patch.py upstream --check
+python scripts/apply_patch.py upstream
+BRANDING_MODULE=upstream/litellm/proxy/branding.py \
+OSS_UNLOCK_MODULE=upstream/litellm/proxy/oss_unlock.py \
+python -m pytest -q tests
+```
+
+Commit the source changes, `UPSTREAM_REF` and regenerated patch together. Pull requests run validation and tests without publishing images. Main-branch pushes and manual runs validate first, then build the same resolved upstream commit and publish to GHCR.
+
+Images receive the upstream tag and an upstream-tag plus patch-commit tag. `latest` changes only for main-branch builds using `UPSTREAM_REF`. A manual run may specify another upstream ref, but its generated patch must still match. Regenerate and commit it first when upstream code differs.
 
 ## Use
 
@@ -117,7 +142,9 @@ services:
   litellm:
     image: ghcr.io/<owner>/litellm-sso:v1.105.1
     environment:
-      SSO_FREE_USER_LIMIT: "0"
+      LITELLM_OSS_UNLOCK: sso
+      # Optional finite cap, even with sso/all enabled:
+      # SSO_FREE_USER_LIMIT: "20"
       GENERIC_CLIENT_ID: ...
       GENERIC_CLIENT_SECRET: ...
       GENERIC_AUTHORIZATION_ENDPOINT: ...
@@ -140,5 +167,10 @@ services:
 ## Tests
 
 ```bash
-BRANDING_MODULE=path/to/patched/litellm/proxy/branding.py pytest tests/
+pip install 'starlette>=0.40,<1' 'httpx>=0.27,<1' 'pytest>=8,<10'
+BRANDING_MODULE=upstream/litellm/proxy/branding.py \
+OSS_UNLOCK_MODULE=upstream/litellm/proxy/oss_unlock.py \
+python -m pytest -q tests
 ```
+
+Tests load the patched runtime modules and selected gate functions without installing the full proxy. They cover SSO boundaries, configuration precedence, the database and premium paths, branding, and patch failure handling. They do not replace a live SSO-provider login test or a full image build.
