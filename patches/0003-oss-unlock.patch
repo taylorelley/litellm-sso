@@ -1,0 +1,998 @@
+diff --git a/litellm/integrations/SlackAlerting/slack_alerting.py b/litellm/integrations/SlackAlerting/slack_alerting.py
+index 6ff048c..03ac42e 100644
+--- a/litellm/integrations/SlackAlerting/slack_alerting.py
++++ b/litellm/integrations/SlackAlerting/slack_alerting.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ #### What this does ####
+ #    Class for sending Slack Alerts #
+ import asyncio
+@@ -1229,7 +1230,7 @@ Model Info:
+     ):
+         from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "email_customization") is not True:
+             if email_logo_url is not None or email_support_contact is not None:
+                 raise ValueError(f"Trying to Customize Email Alerting\n {CommonProxyErrors.not_premium_user.value}")
+ 
+diff --git a/litellm/integrations/azure_storage/azure_storage.py b/litellm/integrations/azure_storage/azure_storage.py
+index 018ff75..666eb12 100644
+--- a/litellm/integrations/azure_storage/azure_storage.py
++++ b/litellm/integrations/azure_storage/azure_storage.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import asyncio
+ import os
+ import time
+@@ -339,7 +340,7 @@ class AzureBlobStorageLogger(CustomBatchLogger):
+         """
+         from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "logging_destinations") is not True:
+             raise ValueError(
+                 f"AzureBlobStorageLogger is only available for premium users. {CommonProxyErrors.not_premium_user}"
+             )
+diff --git a/litellm/integrations/custom_guardrail.py b/litellm/integrations/custom_guardrail.py
+index 02ac53a..5f27735 100644
+--- a/litellm/integrations/custom_guardrail.py
++++ b/litellm/integrations/custom_guardrail.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import contextvars
+ import copy
+ import hashlib
+@@ -1199,7 +1200,7 @@ class CustomGuardrail(CustomLogger):
+         """
+         from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "guardrail_dynamic_params") is not True:
+             verbose_logger.warning(
+                 "Trying to use premium guardrail without premium user %s", CommonProxyErrors.not_premium_user.value
+             )
+diff --git a/litellm/integrations/gcs_bucket/gcs_bucket.py b/litellm/integrations/gcs_bucket/gcs_bucket.py
+index 092357a..c13f178 100644
+--- a/litellm/integrations/gcs_bucket/gcs_bucket.py
++++ b/litellm/integrations/gcs_bucket/gcs_bucket.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import asyncio
+ import hashlib
+ import json
+@@ -45,7 +46,7 @@ class GCSBucketLogger(GCSBucketBase, AdditionalLoggingUtils):
+         asyncio.create_task(self.periodic_flush())
+         AdditionalLoggingUtils.__init__(self)
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "logging_destinations") is not True:
+             raise ValueError(
+                 f"GCS Bucket logging is a premium feature. Please upgrade to use it. {CommonProxyErrors.not_premium_user.value}"
+             )
+@@ -55,7 +56,7 @@ class GCSBucketLogger(GCSBucketBase, AdditionalLoggingUtils):
+         from litellm.proxy._types import CommonProxyErrors
+         from litellm.proxy.proxy_server import premium_user
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "logging_destinations") is not True:
+             raise ValueError(
+                 f"GCS Bucket logging is a premium feature. Please upgrade to use it. {CommonProxyErrors.not_premium_user.value}"
+             )
+diff --git a/litellm/integrations/gcs_pubsub/pub_sub.py b/litellm/integrations/gcs_pubsub/pub_sub.py
+index 3e14d90..5e12b3f 100644
+--- a/litellm/integrations/gcs_pubsub/pub_sub.py
++++ b/litellm/integrations/gcs_pubsub/pub_sub.py
+@@ -5,6 +5,7 @@ This is the PubSub logger for GCS PubSub, this sends LiteLLM SpendLogs Payloads
+ 
+ Users can use this instead of sending their SpendLogs to their Postgres database.
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import json
+@@ -46,7 +47,7 @@ class GcsPubSubLogger(CustomBatchLogger):
+         """
+         from litellm.proxy.utils import _premium_user_check
+ 
+-        _premium_user_check()
++        _premium_user_check(unlock="logging_destinations")
+ 
+         self.async_httpx_client = get_async_httpx_client(llm_provider=httpxSpecialProvider.LoggingCallback)
+ 
+@@ -109,7 +110,7 @@ class GcsPubSubLogger(CustomBatchLogger):
+         )
+         from litellm.proxy.utils import _premium_user_check
+ 
+-        _premium_user_check()
++        _premium_user_check(unlock="logging_destinations")
+ 
+         try:
+             verbose_logger.debug("PubSub: Logging - Enters logging function for model %s", kwargs)
+diff --git a/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py b/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py
+index 77bdbd2..3ad8a7a 100644
+--- a/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py
++++ b/litellm/proxy/_experimental/mcp_server/bridge_token_flow.py
+@@ -1,4 +1,5 @@
+ """Bridge token flow: litellm identity resolution and the DCR-bridge oauth_delegate mint/refresh pipeline."""
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import math
+ import os
+@@ -485,7 +486,7 @@ async def _resolve_jwt_auth(
+         user_api_key_cache,
+     )
+ 
+-    if general_settings.get("enable_jwt_auth") is not True or premium_user is not True or prisma_client is None:
++    if general_settings.get("enable_jwt_auth") is not True or _premium_or_unlocked(premium_user, "jwt_auth") is not True or prisma_client is None:
+         return None
+     try:
+         if jwt_handler.litellm_jwtauth.is_virtual_key_mapping_configured():
+diff --git a/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py b/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py
+index 15632eb..5279422 100644
+--- a/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py
++++ b/litellm/proxy/_experimental/mcp_server/idp_token_exchange.py
+@@ -4,6 +4,7 @@ credential ``lite login`` stores, proven by the proxy's own JWT auth (signature,
+ and the user and team sync it performs), so no browser round trip is needed."""
+ 
+ from __future__ import annotations
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ from collections.abc import Awaitable, Callable, Mapping
+ from dataclasses import dataclass
+@@ -84,7 +85,7 @@ def read_token_exchange_prerequisites() -> TokenExchangePrerequisites:
+     return TokenExchangePrerequisites(
+         jwt_auth_enabled=general_settings.get("enable_jwt_auth", False) is True,
+         has_database=prisma_client is not None,
+-        licensed=premium_user is True,
++        licensed=_premium_or_unlocked(premium_user, "jwt_auth") is True,
+         maps_jwts_to_virtual_keys=_maps_jwts_to_virtual_keys(jwt_handler),
+     )
+ 
+diff --git a/litellm/proxy/auth/auth_utils.py b/litellm/proxy/auth/auth_utils.py
+index f20bdad..28d3ba2 100644
+--- a/litellm/proxy/auth/auth_utils.py
++++ b/litellm/proxy/auth/auth_utils.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import importlib.util
+ import os
+ import re
+@@ -605,7 +606,7 @@ async def pre_db_read_auth_checks(
+     # Check 4. Check if request route is an allowed route on the proxy
+     if "allowed_routes" in general_settings:
+         _allowed_routes: Final = general_settings["allowed_routes"]
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "allowed_routes") is not True:
+             verbose_proxy_logger.error(
+                 "Trying to set allowed_routes. This is an Enterprise feature. %s",
+                 CommonProxyErrors.not_premium_user.value,
+@@ -643,7 +644,7 @@ def route_in_additonal_public_routes(current_route: str):
+     from litellm.proxy.proxy_server import general_settings, premium_user
+ 
+     try:
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "allowed_routes") is not True:
+             return False
+         if general_settings is None:
+             return False
+@@ -858,7 +859,7 @@ async def check_if_request_size_is_safe(request: Request) -> bool:
+ 
+     if max_request_size_mb is not None:
+         # Check if premium user
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "request_size_limits") is not True:
+             verbose_proxy_logger.warning(
+                 "using max_request_size_mb - not checking -  this is an enterprise only feature. %s",
+                 CommonProxyErrors.not_premium_user.value,
+@@ -919,7 +920,7 @@ async def check_response_size_is_safe(response: object) -> bool:
+     max_response_size_mb: Final = general_settings.get("max_response_size_mb", None)
+     if max_response_size_mb is not None:
+         # Check if premium user
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "request_size_limits") is not True:
+             verbose_proxy_logger.warning(
+                 "using max_response_size_mb - not checking -  this is an enterprise only feature. %s",
+                 CommonProxyErrors.not_premium_user.value,
+diff --git a/litellm/proxy/auth/litellm_license.py b/litellm/proxy/auth/litellm_license.py
+index 6460856..c504120 100644
+--- a/litellm/proxy/auth/litellm_license.py
++++ b/litellm/proxy/auth/litellm_license.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ # What is this?
+ ## If litellm license in env, checks if it's valid
+ import base64
+@@ -168,7 +169,7 @@ class LicenseCheck:
+         "*" wildcard that grants every feature, otherwise one per capability. A license verified
+         through the API carries no feature list, so it does not lift the limit either.
+         """
+-        if self.grants_feature(AUTO_ROUTER_LICENSE_FEATURE):
++        if self.grants_feature(AUTO_ROUTER_LICENSE_FEATURE) or _oss_unlocked("auto_router"):
+             return None
+         return 1
+ 
+diff --git a/litellm/proxy/auth/login_utils.py b/litellm/proxy/auth/login_utils.py
+index 629b310..37393f7 100644
+--- a/litellm/proxy/auth/login_utils.py
++++ b/litellm/proxy/auth/login_utils.py
+@@ -4,6 +4,7 @@ Login utilities for handling user authentication in the proxy server.
+ This module contains the core login logic that can be reused across different
+ login endpoints (e.g., /login and /v2/login).
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import os
+ import secrets
+@@ -522,7 +523,7 @@ def create_ui_token_object(
+         user_email=login_result.user_email,
+         user_role=login_result.user_role,
+         login_method=login_result.login_method,
+-        premium_user=premium_user,
++        premium_user=_premium_or_unlocked(premium_user, "ui"),
+         auth_header_name=general_settings.get("litellm_key_header_name", "Authorization"),
+         disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
+         server_root_path=get_server_root_path(),
+diff --git a/litellm/proxy/auth/oauth2_check.py b/litellm/proxy/auth/oauth2_check.py
+index 3633f7b..3f8c936 100644
+--- a/litellm/proxy/auth/oauth2_check.py
++++ b/litellm/proxy/auth/oauth2_check.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import base64
+ import os
+ from typing import Final, cast
+@@ -128,7 +129,7 @@ class Oauth2Handler:
+         """
+         from litellm.proxy.proxy_server import premium_user
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "oauth2_auth") is not True:
+             raise ValueError(
+                 "Oauth2 token validation is only available for premium users" + CommonProxyErrors.not_premium_user.value
+             )
+diff --git a/litellm/proxy/auth/route_checks.py b/litellm/proxy/auth/route_checks.py
+index 2ab76a7..e607528 100644
+--- a/litellm/proxy/auth/route_checks.py
++++ b/litellm/proxy/auth/route_checks.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import re
+ from collections.abc import Collection
+ from typing import Final
+@@ -369,7 +370,7 @@ class RouteChecks:
+         from litellm.proxy.proxy_server import general_settings, premium_user
+ 
+         if "admin_only_routes" in general_settings:
+-            if premium_user is not True:
++            if _premium_or_unlocked(premium_user, "admin_only_routes") is not True:
+                 verbose_proxy_logger.error(
+                     "Trying to use 'admin_only_routes' this is an Enterprise only feature. %s",
+                     CommonProxyErrors.not_premium_user.value,
+diff --git a/litellm/proxy/auth/user_api_key_auth.py b/litellm/proxy/auth/user_api_key_auth.py
+index 3400dcc..1108507 100644
+--- a/litellm/proxy/auth/user_api_key_auth.py
++++ b/litellm/proxy/auth/user_api_key_auth.py
+@@ -6,6 +6,7 @@ it checks if the user passed a valid API Key to the LiteLLM Proxy
+ Returns a UserAPIKeyAuth object if the API key is valid
+ 
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import fnmatch
+@@ -1620,7 +1621,7 @@ async def _user_api_key_auth_builder(
+         if (should_apply_global_oauth2 and not is_jwt) or should_apply_override_oauth2:
+             from litellm.proxy.proxy_server import premium_user
+ 
+-            if premium_user is not True:
++            if _premium_or_unlocked(premium_user, "oauth2_auth") is not True:
+                 raise ProxyException(
+                     message="Oauth2 token validation is only available for premium users. "
+                     + CommonProxyErrors.not_premium_user.value,
+@@ -1640,7 +1641,7 @@ async def _user_api_key_auth_builder(
+             if is_jwt:
+                 from litellm.proxy.proxy_server import premium_user
+ 
+-                if premium_user is not True:
++                if _premium_or_unlocked(premium_user, "jwt_auth") is not True:
+                     raise ProxyException(
+                         message=f"JWT Auth is an enterprise only feature. {CommonProxyErrors.not_premium_user.value}",
+                         type=ProxyErrorTypes.auth_error,
+diff --git a/litellm/proxy/common_utils/http_parsing_utils.py b/litellm/proxy/common_utils/http_parsing_utils.py
+index aa4d6a3..b2ad0ac 100644
+--- a/litellm/proxy/common_utils/http_parsing_utils.py
++++ b/litellm/proxy/common_utils/http_parsing_utils.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import json
+ import re
+ from collections.abc import Collection, Mapping
+@@ -432,7 +433,7 @@ def check_file_size_under_limit(
+             file_content_size_in_mb,
+             max_file_size_mb,
+         )
+-        if not premium_user:
++        if not _premium_or_unlocked(premium_user, "request_size_limits"):
+             raise ProxyException(
+                 message=f"Tried setting max_file_size_mb for /audio/transcriptions. {CommonProxyErrors.not_premium_user.value}",
+                 code=status.HTTP_400_BAD_REQUEST,
+diff --git a/litellm/proxy/fine_tuning_endpoints/endpoints.py b/litellm/proxy/fine_tuning_endpoints/endpoints.py
+index a13ad00..df30d7c 100644
+--- a/litellm/proxy/fine_tuning_endpoints/endpoints.py
++++ b/litellm/proxy/fine_tuning_endpoints/endpoints.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ #########################################################################
+ 
+ #                          /v1/fine_tuning Endpoints
+@@ -108,7 +109,7 @@ async def create_fine_tuning_job(
+ 
+     data = fine_tuning_request.model_dump(exclude_none=True)
+     try:
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "fine_tuning") is not True:
+             raise ValueError(f"Only premium users can use this endpoint + {CommonProxyErrors.not_premium_user.value}")
+         # Convert Pydantic model to dict
+ 
+@@ -257,7 +258,7 @@ async def retrieve_fine_tuning_job(
+ 
+     data: dict = {"fine_tuning_job_id": fine_tuning_job_id}
+     try:
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "fine_tuning") is not True:
+             raise ValueError(f"Only premium users can use this endpoint + {CommonProxyErrors.not_premium_user.value}")
+         await validate_managed_id_requirement(
+             resource_id=fine_tuning_job_id,
+@@ -409,7 +410,7 @@ async def list_fine_tuning_jobs(
+ 
+     data: dict = {}
+     try:
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "fine_tuning") is not True:
+             raise ValueError(f"Only premium users can use this endpoint + {CommonProxyErrors.not_premium_user.value}")
+         # Include original request and headers in the data
+         base_llm_response_processor: Final = ProxyBaseLLMRequestProcessing(data=data)
+@@ -530,7 +531,7 @@ async def cancel_fine_tuning_job(
+ 
+     data: dict = {"fine_tuning_job_id": fine_tuning_job_id}
+     try:
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "fine_tuning") is not True:
+             raise ValueError(f"Only premium users can use this endpoint + {CommonProxyErrors.not_premium_user.value}")
+         await validate_managed_id_requirement(
+             resource_id=fine_tuning_job_id,
+diff --git a/litellm/proxy/hooks/dynamic_rate_limiter.py b/litellm/proxy/hooks/dynamic_rate_limiter.py
+index f4eac6a..2c7fc7b 100644
+--- a/litellm/proxy/hooks/dynamic_rate_limiter.py
++++ b/litellm/proxy/hooks/dynamic_rate_limiter.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ # What is this?
+ ## Allocates dynamic tpm/rpm quota for a project based on current traffic
+ ## Tracks num active projects per minute
+@@ -112,7 +113,7 @@ class _PROXY_DynamicRateLimitHandler(CustomLogger):
+                     litellm.priority_reservation,
+                 )
+             elif priority is not None and litellm.priority_reservation is not None:
+-                if os.getenv("LITELLM_LICENSE", None) is None:
++                if os.getenv("LITELLM_LICENSE", None) is None and not _oss_unlocked("priority_reservation"):
+                     verbose_proxy_logger.error(
+                         "PREMIUM FEATURE: Reserving tpm/rpm by priority is a premium feature. Please add a 'LITELLM_LICENSE' to your .env to enable this.\nGet a license: https://docs.litellm.ai/docs/proxy/enterprise."
+                     )
+diff --git a/litellm/proxy/hooks/dynamic_rate_limiter_v3.py b/litellm/proxy/hooks/dynamic_rate_limiter_v3.py
+index 0339cf4..7bf539e 100644
+--- a/litellm/proxy/hooks/dynamic_rate_limiter_v3.py
++++ b/litellm/proxy/hooks/dynamic_rate_limiter_v3.py
+@@ -1,6 +1,7 @@
+ """
+ Dynamic rate limiter v3 - Saturation-aware priority-based rate limiting
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import os
+ from collections.abc import Callable
+@@ -129,7 +130,7 @@ class _PROXY_DynamicRateLimitHandlerV3(CustomLogger):
+         if litellm.priority_reservation is None or priority not in litellm.priority_reservation:
+             verbose_proxy_logger.debug("Priority Reservation not set for the given priority.")
+         elif priority is not None and litellm.priority_reservation is not None:
+-            if os.getenv("LITELLM_LICENSE", None) is None:
++            if os.getenv("LITELLM_LICENSE", None) is None and not _oss_unlocked("priority_reservation"):
+                 verbose_proxy_logger.error(
+                     "PREMIUM FEATURE: Reserving tpm/rpm by priority is a premium feature. Please add a 'LITELLM_LICENSE' to your .env to enable this.\nGet a license: https://docs.litellm.ai/docs/proxy/enterprise."
+                 )
+diff --git a/litellm/proxy/litellm_pre_call_utils.py b/litellm/proxy/litellm_pre_call_utils.py
+index d6daf6e..58d516d 100644
+--- a/litellm/proxy/litellm_pre_call_utils.py
++++ b/litellm/proxy/litellm_pre_call_utils.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import asyncio
+ import copy
+ import json
+@@ -1058,7 +1059,7 @@ def _dynamically_disabled_backends(
+     """
+     from litellm.proxy.proxy_server import premium_user
+ 
+-    if litellm.allow_dynamic_callback_disabling is not True or not premium_user:
++    if litellm.allow_dynamic_callback_disabling is not True or not _premium_or_unlocked(premium_user, "dynamic_callback_disabling"):
+         return frozenset()
+     header: Final = (request_headers if request_headers is not None else _NO_REQUEST_HEADERS).get(
+         X_LITELLM_DISABLE_CALLBACKS
+@@ -2953,7 +2954,7 @@ def _enforced_params_check(
+     )
+     if enforced_params is None:
+         return True
+-    if enforced_params and premium_user is not True:
++    if enforced_params and _premium_or_unlocked(premium_user, "enforced_params") is not True:
+         raise ValueError(
+             f"Enforced Params is an Enterprise feature. Enforced Params: {enforced_params}. {CommonProxyErrors.not_premium_user.value}"
+         )
+diff --git a/litellm/proxy/management_endpoints/common_utils.py b/litellm/proxy/management_endpoints/common_utils.py
+index 2e29eb5..3d38ddf 100644
+--- a/litellm/proxy/management_endpoints/common_utils.py
++++ b/litellm/proxy/management_endpoints/common_utils.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import math
+ from collections.abc import Mapping
+ from types import MappingProxyType
+@@ -81,7 +82,7 @@ def validate_team_model_max_budget(
+     """Reject a team `model_max_budget` the limiter could not enforce (no duration, bad cap, tpm/rpm limits)."""
+     if not model_max_budget:
+         return
+-    if premium_user is not True:
++    if _premium_or_unlocked(premium_user, "model_max_budget") is not True:
+         raise HTTPException(
+             status_code=403,
+             detail={
+diff --git a/litellm/proxy/management_endpoints/key_management_endpoints.py b/litellm/proxy/management_endpoints/key_management_endpoints.py
+index d417ec1..ba72a07 100644
+--- a/litellm/proxy/management_endpoints/key_management_endpoints.py
++++ b/litellm/proxy/management_endpoints/key_management_endpoints.py
+@@ -8,6 +8,7 @@ All /key management endpoints
+ /key/update
+ /key/delete
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import copy
+@@ -1422,7 +1423,7 @@ async def _common_key_generation_helper(
+     if "tags" in data_json:
+         from litellm.proxy.proxy_server import premium_user
+ 
+-        if premium_user is not True and data_json["tags"] is not None:
++        if _premium_or_unlocked(premium_user, "key_team_settings") is not True and data_json["tags"] is not None:
+             raise ValueError(f"Only premium users can add tags to keys. {CommonProxyErrors.not_premium_user.value}")
+ 
+         _metadata: Final = data_json.get("metadata")
+@@ -4502,7 +4503,7 @@ def _check_model_access_group(models: list[str] | None, llm_router: Router | Non
+ 
+     for model in models:
+         if llm_router._is_model_access_group_for_wildcard_route(model_access_group=model):
+-            if not premium_user:
++            if not _premium_or_unlocked(premium_user, "model_access_groups"):
+                 raise HTTPException(
+                     status_code=status.HTTP_403_FORBIDDEN,
+                     detail={
+@@ -4764,7 +4765,7 @@ async def generate_key_helper_fn(
+         if isinstance(saved_token["metadata"], str):
+             saved_token["metadata"] = json.loads(saved_token["metadata"])
+         if isinstance(saved_token["permissions"], str):
+-            if "get_spend_routes" in saved_token["permissions"] and premium_user is not True:
++            if "get_spend_routes" in saved_token["permissions"] and _premium_or_unlocked(premium_user, "spend_reports") is not True:
+                 raise ValueError("get_spend_routes permission is only available for LiteLLM Enterprise users")
+ 
+             saved_token["permissions"] = json.loads(saved_token["permissions"])
+@@ -5837,7 +5838,7 @@ async def regenerate_key_fn(
+         )
+ 
+         if (
+-            premium_user is not True and not is_master_key_regeneration
++            _premium_or_unlocked(premium_user, "key_rotation") is not True and not is_master_key_regeneration
+         ):  # allow master key regeneration for non-premium users
+             raise ValueError(
+                 f"Regenerating Virtual Keys is an Enterprise feature, {CommonProxyErrors.not_premium_user.value}"
+@@ -7821,7 +7822,7 @@ def validate_model_max_budget(model_max_budget: dict | None) -> None:
+         if model_max_budget is not None:
+             from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
+ 
+-            if premium_user is not True:
++            if _premium_or_unlocked(premium_user, "model_max_budget") is not True:
+                 raise ValueError(
+                     f"You must have an enterprise license to set model_max_budget. {CommonProxyErrors.not_premium_user.value}"
+                 )
+diff --git a/litellm/proxy/management_endpoints/model_management_endpoints.py b/litellm/proxy/management_endpoints/model_management_endpoints.py
+index 0f0d156..ea8520d 100644
+--- a/litellm/proxy/management_endpoints/model_management_endpoints.py
++++ b/litellm/proxy/management_endpoints/model_management_endpoints.py
+@@ -7,6 +7,7 @@ Endpoints here:
+ 
+ model/{model_id}/update - PATCH endpoint for model update.
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ #### MODEL MANAGEMENT ####
+ 
+@@ -1998,7 +1999,7 @@ class ModelManagementAuthChecks:
+         team_obj: LiteLLM_TeamTable | None = None,
+         premium_user: bool = False,
+     ) -> Literal[True]:
+-        if premium_user is False:
++        if _premium_or_unlocked(premium_user, "team_models") is False:
+             raise HTTPException(
+                 status_code=403,
+                 detail={"error": CommonProxyErrors.not_premium_user.value},
+@@ -2072,7 +2073,7 @@ class ModelManagementAuthChecks:
+     ) -> Literal[True]:
+         if model_params.model_info is None or model_params.model_info.team_id is None:
+             return True
+-        if model_params.model_info.team_id is not None and premium_user is not True:
++        if model_params.model_info.team_id is not None and _premium_or_unlocked(premium_user, "team_models") is not True:
+             raise HTTPException(
+                 status_code=403,
+                 detail={"error": CommonProxyErrors.not_premium_user.value},
+diff --git a/litellm/proxy/management_endpoints/organization_endpoints.py b/litellm/proxy/management_endpoints/organization_endpoints.py
+index c8ae7af..47e4534 100644
+--- a/litellm/proxy/management_endpoints/organization_endpoints.py
++++ b/litellm/proxy/management_endpoints/organization_endpoints.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import math
+ 
+ """
+@@ -98,7 +99,7 @@ async def _enterprise_license_required(
+ ) -> None:
+     from litellm.proxy.proxy_server import premium_user
+ 
+-    if not premium_user:
++    if not _premium_or_unlocked(premium_user, "organizations"):
+         raise HTTPException(
+             status_code=403,
+             detail={
+diff --git a/litellm/proxy/management_endpoints/team_endpoints.py b/litellm/proxy/management_endpoints/team_endpoints.py
+index 8943f5a..6be6570 100644
+--- a/litellm/proxy/management_endpoints/team_endpoints.py
++++ b/litellm/proxy/management_endpoints/team_endpoints.py
+@@ -8,6 +8,7 @@ All /team management endpoints
+ /team/update
+ /team/delete
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import copy
+@@ -2692,12 +2693,12 @@ def _check_team_member_admin_add(
+     premium_user: bool,
+ ):
+     if isinstance(member, Member) and member.role == "admin":
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "team_admins") is not True:
+             raise ValueError(f"Assigning team admins is a premium feature. {CommonProxyErrors.not_premium_user.value}")
+     elif isinstance(member, list):
+         for m in member:
+             if m.role == "admin":
+-                if premium_user is not True:
++                if _premium_or_unlocked(premium_user, "team_admins") is not True:
+                     raise ValueError(
+                         f"Assigning team admins is a premium feature. Got={m}. {CommonProxyErrors.not_premium_user.value}. "
+                     )
+@@ -3783,7 +3784,7 @@ async def team_member_update(
+     if data.team_id is None:
+         raise HTTPException(status_code=400, detail={"error": "No team id passed in"})
+ 
+-    if data.role == "admin" and not premium_user:
++    if data.role == "admin" and not _premium_or_unlocked(premium_user, "team_admins"):
+         # exactly the same text your proxy throws for add:
+         raise HTTPException(
+             status_code=400,
+diff --git a/litellm/proxy/management_endpoints/ui_sso.py b/litellm/proxy/management_endpoints/ui_sso.py
+index c4d8d96..f9409e4 100644
+--- a/litellm/proxy/management_endpoints/ui_sso.py
++++ b/litellm/proxy/management_endpoints/ui_sso.py
+@@ -7,6 +7,7 @@ Has all /sso/* routes
+ /sso/debug/login - handles user signing in with SSO and redirects to /sso/debug/callback
+ /sso/debug/callback - returns the OpenID object returned by the SSO provider
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import base64
+@@ -3705,7 +3706,7 @@ class SSOAuthenticationHandler:
+             user_email=user_email,
+             user_role=user_role or LitellmUserRoles.INTERNAL_USER_VIEW_ONLY.value,
+             login_method="sso",
+-            premium_user=premium_user,
++            premium_user=_premium_or_unlocked(premium_user, "ui"),
+             auth_header_name=general_settings.get("litellm_key_header_name", "Authorization"),
+             disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
+             server_root_path=get_server_root_path(),
+diff --git a/litellm/proxy/management_helpers/audit_logs.py b/litellm/proxy/management_helpers/audit_logs.py
+index ecd6abe..e927301 100644
+--- a/litellm/proxy/management_helpers/audit_logs.py
++++ b/litellm/proxy/management_helpers/audit_logs.py
+@@ -1,6 +1,7 @@
+ """
+ Functions to create audit logs for LiteLLM Proxy
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import json
+@@ -37,7 +38,7 @@ def is_audit_logging_enabled(store_audit_logs: bool | None = None) -> bool:
+ 
+     from litellm.proxy.proxy_server import premium_user
+ 
+-    return premium_user is True
++    return _premium_or_unlocked(premium_user, "audit_logs") is True
+ 
+ 
+ def _allows_litellm_changed_by_header(user_api_key_dict: UserAPIKeyAuth) -> bool:
+@@ -213,7 +214,7 @@ async def create_audit_log_for_update(request_data: LiteLLM_AuditLogs):
+ 
+     from litellm.proxy.proxy_server import premium_user, prisma_client
+ 
+-    if premium_user is not True:
++    if _premium_or_unlocked(premium_user, "audit_logs") is not True:
+         return
+ 
+     verbose_proxy_logger.debug("creating audit log for %s", request_data)
+diff --git a/litellm/proxy/management_helpers/auto_router_permissions.py b/litellm/proxy/management_helpers/auto_router_permissions.py
+index a53b704..a744da9 100644
+--- a/litellm/proxy/management_helpers/auto_router_permissions.py
++++ b/litellm/proxy/management_helpers/auto_router_permissions.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ from collections.abc import Mapping
+ from dataclasses import dataclass
+ from datetime import datetime
+@@ -109,7 +110,7 @@ class MemberAutoRouterDependencyObjects:
+ def authorize_member_auto_router_team(
+     *, user_api_key_dict: UserAPIKeyAuth, team: LiteLLM_TeamTable, premium_user: bool
+ ) -> None:
+-    if not premium_user:
++    if not _premium_or_unlocked(premium_user, "auto_router"):
+         raise HTTPException(status_code=403, detail=CommonProxyErrors.not_premium_user.value)
+     if (
+         user_api_key_dict.user_role
+diff --git a/litellm/proxy/management_helpers/team_metadata_validation.py b/litellm/proxy/management_helpers/team_metadata_validation.py
+index 8bb3269..12e9514 100644
+--- a/litellm/proxy/management_helpers/team_metadata_validation.py
++++ b/litellm/proxy/management_helpers/team_metadata_validation.py
+@@ -8,6 +8,7 @@ write and fails closed: a rejected value surfaces the function's own message
+ (HTTP 400), while any raised exception or timeout blocks the write with a
+ generic message (HTTP 503).
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import inspect
+@@ -108,7 +109,7 @@ async def run_team_metadata_validation(
+     timeout_seconds: float,
+     unavailable_message: str,
+ ) -> None:
+-    if premium_user is not True:
++    if _premium_or_unlocked(premium_user, "custom_team_metadata_validation") is not True:
+         raise HTTPException(
+             status_code=status.HTTP_400_BAD_REQUEST,
+             detail={
+diff --git a/litellm/proxy/oss_unlock.py b/litellm/proxy/oss_unlock.py
+new file mode 100644
+index 0000000..cfd1d90
+--- /dev/null
++++ b/litellm/proxy/oss_unlock.py
+@@ -0,0 +1,80 @@
++"""
++Per-feature opt-in for capabilities that upstream gates behind a licence check in
++MIT-licensed code.
++
++    LITELLM_OSS_UNLOCK=jwt_auth,audit_logs,organizations     # specific features
++    LITELLM_OSS_UNLOCK=all                                   # every feature below
++
++Unset (the default) keeps upstream behaviour exactly. Read at call time, so values set
++through the proxy config's environment_variables are honoured.
++
++Only gates whose protected code is MIT-licensed are covered. Checks that guard code from
++upstream's separately licensed `enterprise/` directory or `litellm_enterprise` package
++are deliberately left untouched and cannot be unlocked here.
++"""
++
++from __future__ import annotations
++
++import os
++from typing import Final
++
++ENV_VAR: Final = "LITELLM_OSS_UNLOCK"
++
++FEATURES: Final[dict[str, str]] = {
++    "admin_only_routes": "general_settings.admin_only_routes",
++    "allowed_ips": "general_settings.allowed_ips",
++    "allowed_routes": "general_settings.allowed_routes and public_routes",
++    "audit_logs": "Audit logs for management changes",
++    "auto_router": "Unlimited auto-routers per classifier/customisation capability",
++    "custom_team_metadata_validation": "general_settings.custom_team_metadata_validate",
++    "dynamic_callback_disabling": "Disabling callbacks per request",
++    "email_customization": "Custom logo and support contact in alert emails",
++    "enforced_params": "general_settings.enforced_params",
++    "fine_tuning": "/fine_tuning endpoints",
++    "guardrail_dynamic_params": "Per-request guardrail extra_body",
++    "jwt_auth": "JWT auth for the proxy and MCP token exchange",
++    "key_rotation": "Regenerating virtual keys",
++    "key_team_settings": "Key/team/project guardrails, policies, tags, prompts, logging, "
++    "secret manager settings, passthrough routes and key duration",
++    "logging_destinations": "GCS bucket, GCS Pub/Sub and Azure Blob logging",
++    "model_access_groups": "Model access groups on wildcard routes",
++    "model_audit_fields": "created_at/updated_at/created_by/updated_by on model info",
++    "model_max_budget": "Per-model budgets on keys and teams",
++    "oauth2_auth": "OAuth2 token validation",
++    "organizations": "/organization endpoints",
++    "priority_reservation": "TPM/RPM reservation by priority (dynamic rate limiter)",
++    "request_size_limits": "max_request_size_mb, max_response_size_mb, max_file_size_mb",
++    "secret_managers": "AWS KMS v2, Google, HashiCorp and CyberArk secret managers",
++    "spend_reports": "/global/spend/report and get_spend_routes key permission",
++    "tag_budgets": "Budgets per request tag",
++    "team_admins": "Team admin role",
++    "team_models": "Team-scoped models",
++    "ui": "Show licence-gated features in the admin UI (sets the UI's premium flag)",
++    "worker_registry": "general_settings.worker_registry",
++}
++
++
++def _enabled() -> frozenset[str]:
++    raw = os.getenv(ENV_VAR, "")
++    names = {part.strip().lower() for part in raw.split(",") if part.strip()}
++    if "all" in names:
++        return frozenset(FEATURES)
++    return frozenset(names & FEATURES.keys())
++
++
++def is_unlocked(feature: str) -> bool:
++    if feature not in FEATURES:
++        raise KeyError(f"Unknown {ENV_VAR} feature: {feature}")
++    return feature in _enabled()
++
++
++def premium_or_unlocked(premium_user, feature: str):
++    """Drop-in for a `premium_user` value at a gate: True when the feature is unlocked,
++    otherwise the original value unchanged (so locked behaviour is identical to upstream)."""
++    return True if is_unlocked(feature) else premium_user
++
++
++def unknown_features() -> list[str]:
++    raw = os.getenv(ENV_VAR, "")
++    names = [part.strip().lower() for part in raw.split(",") if part.strip()]
++    return [n for n in names if n != "all" and n not in FEATURES]
+diff --git a/litellm/proxy/proxy_server.py b/litellm/proxy/proxy_server.py
+index db98ab2..63334e6 100644
+--- a/litellm/proxy/proxy_server.py
++++ b/litellm/proxy/proxy_server.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import asyncio
+ import copy
+ import enum
+@@ -1275,6 +1276,10 @@ async def proxy_startup_event(app: FastAPI) -> AsyncGenerator[ProxyLifespanState
+                 raise
+ 
+     ## CHECK PREMIUM USER
++    from litellm.proxy.oss_unlock import unknown_features as _oss_unknown
++
++    if _oss_unknown():
++        verbose_proxy_logger.warning("LITELLM_OSS_UNLOCK: unknown feature(s) ignored: %s", _oss_unknown())
+     verbose_proxy_logger.debug("litellm.proxy.proxy_server.py::startup() - CHECKING PREMIUM USER - %s", premium_user)
+     if premium_user is False:
+         premium_user = _license_check.is_premium()
+@@ -6825,7 +6830,7 @@ class ProxyConfig:
+             ui_access_mode = general_settings.get("ui_access_mode", "all")  # can be either ["admin_only" or "all"]
+             ### ALLOWED IP ###
+             allowed_ips: Final = general_settings.get("allowed_ips", None)
+-            if allowed_ips is not None and premium_user is False:
++            if allowed_ips is not None and _premium_or_unlocked(premium_user, "allowed_ips") is False:
+                 raise ValueError(
+                     "allowed_ips is an Enterprise Feature. Please add a valid LITELLM_LICENSE to your envionment."
+                 )
+@@ -6880,7 +6885,7 @@ class ProxyConfig:
+             _apply_ssrf_general_settings(general_settings)
+ 
+             ## check if user has set a premium feature in general_settings
+-            if general_settings.get("enforced_params") is not None and premium_user is not True:
++            if general_settings.get("enforced_params") is not None and _premium_or_unlocked(premium_user, "enforced_params") is not True:
+                 raise ValueError("Trying to use `enforced_params`" + CommonProxyErrors.not_premium_user.value)
+ 
+             # check if litellm_license in general_settings
+@@ -7092,7 +7097,7 @@ class ProxyConfig:
+         ## WORKER REGISTRY (Global Control Plane)
+         worker_registry_config: Final = config.get("worker_registry", None)
+         if worker_registry_config:
+-            if premium_user is not True:
++            if _premium_or_unlocked(premium_user, "worker_registry") is not True:
+                 raise ValueError("Trying to use `worker_registry`" + CommonProxyErrors.not_premium_user.value)
+             self.worker_registry = [WorkerRegistryEntry(**e) for e in worker_registry_config]
+         else:
+@@ -7254,7 +7259,7 @@ class ProxyConfig:
+             model.model_info["db_model"] = True
+             model.model_info["blocked"] = bool(getattr(model, "blocked", False))
+ 
+-        if premium_user is True:
++        if _premium_or_unlocked(premium_user, "model_audit_fields") is True:
+             # seeing "created_at", "updated_at", "created_by", "updated_by" is a LiteLLM Enterprise Feature
+             model.model_info["created_at"] = getattr(model, "created_at", None)
+             model.model_info["updated_at"] = getattr(model, "updated_at", None)
+@@ -17284,7 +17289,7 @@ async def onboarding(invite_link: str, request: Request):
+         user_email=user_obj.user_email,
+         user_role=user_obj.user_role,  # pyright: ignore[reportArgumentType]  # nullable DB column, no unset contract
+         login_method="username_password",
+-        premium_user=premium_user,
++        premium_user=_premium_or_unlocked(premium_user, "ui"),
+         auth_header_name=general_settings.get("litellm_key_header_name", "Authorization"),
+         disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
+         server_root_path=get_server_root_path(),
+@@ -17395,7 +17400,7 @@ async def _generate_onboarding_ui_session_token(user_obj: _UserTableRow) -> str:
+         user_email=user_obj.user_email,
+         user_role=user_obj.user_role,  # pyright: ignore[reportArgumentType]  # nullable DB column, no unset contract
+         login_method="username_password",
+-        premium_user=premium_user,
++        premium_user=_premium_or_unlocked(premium_user, "ui"),
+         auth_header_name=general_settings.get("litellm_key_header_name", "Authorization"),
+         disabled_non_admin_personal_key_creation=disabled_non_admin_personal_key_creation,
+         server_root_path=get_server_root_path(),
+@@ -20015,7 +20020,7 @@ app.router.routes = hot_routes_first(app.router.routes)
+ app.add_middleware(
+     RequestSizeLimitMiddleware,
+     get_max_request_size_mb=lambda: general_settings.get("max_request_size_mb"),
+-    is_request_size_limit_enabled=lambda: premium_user is True,
++    is_request_size_limit_enabled=lambda: _premium_or_unlocked(premium_user, "request_size_limits") is True,
+ )
+ app.add_middleware(
+     AdmissionControlMiddleware,
+diff --git a/litellm/proxy/spend_tracking/spend_management_endpoints.py b/litellm/proxy/spend_tracking/spend_management_endpoints.py
+index 3102fc6..1420775 100644
+--- a/litellm/proxy/spend_tracking/spend_management_endpoints.py
++++ b/litellm/proxy/spend_tracking/spend_management_endpoints.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ #### SPEND MANAGEMENT #####
+ import collections
+ import json
+@@ -1490,7 +1491,7 @@ async def get_global_spend_report(
+                 "Database not connected. Connect a database to your proxy - https://docs.litellm.ai/docs/simple_proxy#managing-auth---virtual-keys"
+             )
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "spend_reports") is not True:
+             verbose_proxy_logger.debug("accessing /spend/report but not a premium user")
+             raise ValueError("/spend/report endpoint " + CommonProxyErrors.not_premium_user.value)
+         db_response: Sequence[Mapping[str, object]] | None
+@@ -1805,7 +1806,7 @@ def _spend_report_prereqs() -> PrismaClient:
+             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+             detail=CommonProxyErrors.db_not_connected_error.value,
+         )
+-    if premium_user is not True:
++    if _premium_or_unlocked(premium_user, "spend_reports") is not True:
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+             detail="/spend/report endpoint " + CommonProxyErrors.not_premium_user.value,
+diff --git a/litellm/proxy/utils.py b/litellm/proxy/utils.py
+index f77e248..67f2de9 100644
+--- a/litellm/proxy/utils.py
++++ b/litellm/proxy/utils.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import asyncio
+ import contextlib
+ import copy
+@@ -8242,7 +8243,7 @@ def handle_exception_on_proxy(e: Exception, litellm_call_id: str | None = None)
+     )
+ 
+ 
+-def _premium_user_check(feature: str | None = None):
++def _premium_user_check(feature: str | None = None, unlock: str = "key_team_settings"):
+     """
+     Raises an HTTPException if the user is not a premium user
+     """
+@@ -8255,7 +8256,7 @@ def _premium_user_check(feature: str | None = None):
+             f"This feature is only available for LiteLLM Enterprise users. {CommonProxyErrors.not_premium_user.value}"
+         )
+ 
+-    if not premium_user:
++    if not _premium_or_unlocked(premium_user, unlock):
+         raise HTTPException(
+             status_code=403,
+             detail={"error": detail_msg},
+diff --git a/litellm/router_strategy/budget_limiter.py b/litellm/router_strategy/budget_limiter.py
+index a792654..343d44e 100644
+--- a/litellm/router_strategy/budget_limiter.py
++++ b/litellm/router_strategy/budget_limiter.py
+@@ -17,6 +17,7 @@ anthropic:
+         time_period: 7d
+ ```
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import asyncio
+ import builtins
+@@ -917,7 +918,7 @@ class RouterBudgetLimiting(CustomLogger):
+             return
+         from litellm.proxy.proxy_server import CommonProxyErrors, premium_user
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "tag_budgets") is not True:
+             raise ValueError(f"Tag budgets are an Enterprise only feature, {CommonProxyErrors.not_premium_user}")
+ 
+         if self.tag_budget_config is None:
+diff --git a/litellm/secret_managers/aws_secret_manager.py b/litellm/secret_managers/aws_secret_manager.py
+index 1aed44e..2c59fab 100644
+--- a/litellm/secret_managers/aws_secret_manager.py
++++ b/litellm/secret_managers/aws_secret_manager.py
+@@ -7,6 +7,7 @@ Requires:
+ * `os.environ["AWS_REGION_NAME"],
+ * `pip install boto3>=1.28.57`
+ """
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ 
+ import ast
+ import base64
+@@ -64,7 +65,7 @@ class AWSKeyManagementService_V2:
+             or os.getenv("LITELLM_SECRET_AWS_KMS_LITELLM_LICENSE", None) is not None
+         ):
+             is_litellm_license_in_env = True
+-        if is_litellm_license_in_env is False:
++        if is_litellm_license_in_env is False and not _oss_unlocked("secret_managers"):
+             raise ValueError(
+                 "AWSKeyManagementService V2 is an Enterprise Feature. Please add a valid LITELLM_LICENSE to your envionment."
+             )
+diff --git a/litellm/secret_managers/cyberark_secret_manager.py b/litellm/secret_managers/cyberark_secret_manager.py
+index f8e1748..491ca02 100644
+--- a/litellm/secret_managers/cyberark_secret_manager.py
++++ b/litellm/secret_managers/cyberark_secret_manager.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import asyncio
+ import base64
+ import os
+@@ -59,7 +60,7 @@ class CyberArkSecretManager(BaseSecretManager):
+         _refresh_interval: Final = int(os.environ.get("CYBERARK_REFRESH_INTERVAL", "300"))
+         self.cache = InMemoryCache(default_ttl=_refresh_interval)
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "secret_managers") is not True:
+             raise ValueError(
+                 f"CyberArk secret manager is only available for premium users. {CommonProxyErrors.not_premium_user.value}"
+             )
+diff --git a/litellm/secret_managers/google_secret_manager.py b/litellm/secret_managers/google_secret_manager.py
+index 913fd4d..d051159 100644
+--- a/litellm/secret_managers/google_secret_manager.py
++++ b/litellm/secret_managers/google_secret_manager.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import base64
+ import os
+ from typing import Final
+@@ -25,7 +26,7 @@ class GoogleSecretManager(GCSBucketBase):
+         """
+         from litellm.proxy.proxy_server import premium_user
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "secret_managers") is not True:
+             raise ValueError(
+                 f"Google Secret Manager requires an Enterprise License {CommonProxyErrors.not_premium_user.value}"
+             )
+diff --git a/litellm/secret_managers/hashicorp_secret_manager.py b/litellm/secret_managers/hashicorp_secret_manager.py
+index 2752389..b849003 100644
+--- a/litellm/secret_managers/hashicorp_secret_manager.py
++++ b/litellm/secret_managers/hashicorp_secret_manager.py
+@@ -1,3 +1,4 @@
++from litellm.proxy.oss_unlock import is_unlocked as _oss_unlocked, premium_or_unlocked as _premium_or_unlocked
+ import os
+ from collections.abc import Mapping
+ from types import MappingProxyType
+@@ -119,7 +120,7 @@ class HashicorpSecretManager(BaseSecretManager):
+ 
+         self._verify_required_credentials_exist()
+ 
+-        if premium_user is not True:
++        if _premium_or_unlocked(premium_user, "secret_managers") is not True:
+             raise ValueError(
+                 f"Hashicorp secret manager is only available for premium users. {CommonProxyErrors.not_premium_user.value}"
+             )

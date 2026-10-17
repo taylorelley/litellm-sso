@@ -8,7 +8,7 @@ on:
         required: true
   push:
     branches: [main]
-    paths: [patches/**, tests/**, UPSTREAM_REF, .github/workflows/build.yml]
+    paths: [patches/**, tests/**, scripts/**, UPSTREAM_REF, .github/workflows/build.yml]
 
 permissions:
   contents: read
@@ -44,6 +44,7 @@ jobs:
           done
           grep -n "SSO_FREE_USER_LIMIT" litellm/proxy/management_endpoints/ui_sso.py
           grep -n "BrandingMiddleware" litellm/proxy/proxy_server.py
+          grep -n "_premium_or_unlocked" litellm/proxy/proxy_server.py
 
       - uses: actions/setup-python@v5
         with:
@@ -52,12 +53,13 @@ jobs:
       - name: Test branding module
         run: |
           pip install -q starlette httpx pytest
-          BRANDING_MODULE=upstream/litellm/proxy/branding.py python -m pytest -q tests
+          BRANDING_MODULE=upstream/litellm/proxy/branding.py OSS_UNLOCK_MODULE=upstream/litellm/proxy/oss_unlock.py python -m pytest -q tests
 
       - name: Ensure no enterprise/ code is imported by the patch
         run: |
-          if grep -E "^\+.*(litellm_enterprise|enterprise/)" patches/*.patch; then
-            echo "Patch references enterprise-licensed code"; exit 1
+          # Any added import of enterprise-licensed code fails the build.
+          if grep -E "^\+\s*(from|import)\s+(litellm_enterprise|enterprise)\b|^\+.*from litellm\.proxy import enterprise" patches/*.patch; then
+            echo "Patch imports enterprise-licensed code"; exit 1
           fi
 
       - uses: docker/setup-buildx-action@v3

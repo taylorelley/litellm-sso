@@ -1,9 +1,10 @@
 # litellm-sso
 
-Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with two changes, both configured by environment variables:
+Builds the upstream [LiteLLM](https://github.com/BerriAI/litellm) proxy image with three changes, all configured by environment variables:
 
 1. **SSO user limit**: read from `SSO_FREE_USER_LIMIT` instead of being fixed at 5.
 2. **Branding**: product name, titles, links, colours, fonts and custom CSS for the UI, server-rendered pages, emails and API docs.
+3. **Licence-gated features in MIT code**: opt in per feature with `LITELLM_OSS_UNLOCK`.
 
 ## 1. SSO user limit
 
@@ -47,6 +48,55 @@ UI theme variables you can set with `BRAND_CSS_VARS` include `background`, `fore
 - Data values the UI compares against API responses ("LiteLLM Content Filter", "LiteLLM LLM as a Judge"), and "LiteLLM Enterprise" so licence messages stay accurate.
 - Internal identifiers such as `LiteLLM_TeamTable`, and API/JSON responses, logs and response headers.
 - Text that arrives from the API at runtime (for example guardrail provider names) still says LiteLLM.
+
+## 3. Licence-gated features in MIT code
+
+`patches/0003-oss-unlock.patch` adds `litellm/proxy/oss_unlock.py` and makes each licence check in MIT-licensed code opt-in per feature:
+
+```
+LITELLM_OSS_UNLOCK=jwt_auth,audit_logs,priority_reservation,ui   # specific features
+LITELLM_OSS_UNLOCK=all                                            # everything below
+```
+
+Unset, every gate behaves exactly as upstream. Misspelt names are ignored with a warning at startup.
+
+| Feature | What it enables |
+|---|---|
+| `admin_only_routes` | `general_settings.admin_only_routes` |
+| `allowed_ips` | `general_settings.allowed_ips` |
+| `allowed_routes` | `general_settings.allowed_routes` and extra public routes |
+| `audit_logs` | Audit logs for management changes |
+| `auto_router` | Unlimited auto-routers per classifier/customisation capability |
+| `custom_team_metadata_validation` | `general_settings.custom_team_metadata_validate` |
+| `dynamic_callback_disabling` | Disabling callbacks per request |
+| `email_customization` | Custom logo and support contact in alert emails |
+| `enforced_params` | `general_settings.enforced_params` |
+| `fine_tuning` | `/fine_tuning` endpoints |
+| `guardrail_dynamic_params` | Per-request guardrail `extra_body` |
+| `jwt_auth` | JWT auth for the proxy and MCP token exchange |
+| `key_rotation` | Regenerating virtual keys |
+| `key_team_settings` | Guardrails, policies, tags, prompts, logging, secret manager settings, passthrough routes and key duration on keys/teams/projects |
+| `logging_destinations` | GCS bucket, GCS Pub/Sub and Azure Blob logging |
+| `model_access_groups` | Model access groups on wildcard routes |
+| `model_audit_fields` | created/updated by/at on model info |
+| `model_max_budget` | Per-model budgets on keys and teams |
+| `oauth2_auth` | OAuth2 token validation |
+| `organizations` | `/organization` endpoints |
+| `priority_reservation` | TPM/RPM reservation by priority (`litellm_settings.priority_reservation`) |
+| `request_size_limits` | `max_request_size_mb`, `max_response_size_mb`, `max_file_size_mb` |
+| `secret_managers` | AWS KMS v2, Google, HashiCorp and CyberArk secret managers |
+| `spend_reports` | `/global/spend/report` and the `get_spend_routes` key permission |
+| `tag_budgets` | Budgets per request tag |
+| `team_admins` | Team admin role |
+| `team_models` | Team-scoped models |
+| `ui` | Shows licence-gated features in the admin UI |
+| `worker_registry` | `general_settings.worker_registry` |
+
+**Not unlockable (enterprise-licensed code):** Llama Guard, LLM Guard, secret detection, OpenAI and Google text moderation, blocked-user lists and banned keywords (all loaded from `enterprise/` or `litellm_enterprise`), tag-based guardrail modes, the custom SSO handler, enterprise email senders and the enterprise key/route hooks. Their checks are untouched. With `ui` unlocked the admin UI may still show some of these; using them fails with upstream's licence error.
+
+**Not changed:** the licence health endpoint still reports `community`, and user/team count limits only apply to signed licences, so they never block without one.
+
+To regenerate this patch for a new upstream version, apply 0001 and 0002, then run `scripts/apply_oss_unlock.py` against the checkout. Each edit must match exactly once near a unique anchor, so the script fails rather than guessing if upstream moved a gate.
 
 ## Licence
 
