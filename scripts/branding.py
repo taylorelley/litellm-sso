@@ -222,6 +222,13 @@ def brand_text(text: str, config: BrandingConfig | None = None, *, html: bool = 
     if not config.enabled:
         return text
 
+    protected: dict[str, str] = {}
+
+    def protect(value: str) -> str:
+        token = f"\x00BRANDVALUE{len(protected)}\x00"
+        protected[token] = value
+        return token
+
     def replacement(value: str) -> str:
         if javascript:
             encoded = json.dumps(value, ensure_ascii=True)[1:-1]
@@ -231,18 +238,18 @@ def brand_text(text: str, config: BrandingConfig | None = None, *, html: bool = 
         return _html_attr(value) if html else value
 
     if config.docs_url:
-        text = _DOCS_URL_RE.sub(lambda _m: replacement(config.docs_url or ""), text)
+        text = _DOCS_URL_RE.sub(lambda _m: protect(replacement(config.docs_url or "")), text)
     if config.github_url:
-        text = _GITHUB_URL_RE.sub(lambda _m: replacement(config.github_url or ""), text)
+        text = _GITHUB_URL_RE.sub(lambda _m: protect(replacement(config.github_url or "")), text)
     if config.website_url:
-        text = _WEBSITE_URL_RE.sub(lambda _m: replacement(config.website_url or ""), text)
+        text = _WEBSITE_URL_RE.sub(lambda _m: protect(replacement(config.website_url or "")), text)
 
     if config.title:
         title = replacement(config.title)
-        text = text.replace("LiteLLM Dashboard", title)
+        text = text.replace("LiteLLM Dashboard", protect(title))
     if config.description:
         desc = replacement(config.description)
-        text = text.replace("LiteLLM Proxy Admin UI", desc)
+        text = text.replace("LiteLLM Proxy Admin UI", protect(desc))
 
     if config.name and UPSTREAM_NAME in text:
         placeholders: dict[str, str] = {}
@@ -255,6 +262,8 @@ def brand_text(text: str, config: BrandingConfig | None = None, *, html: bool = 
         text = _NAME_RE.sub(lambda m: m.group(0) if _is_bare_object_key(text, m) else name, text)
         for token, phrase in placeholders.items():
             text = text.replace(token, phrase)
+    for token, value in protected.items():
+        text = text.replace(token, value)
     return text
 
 
@@ -320,7 +329,7 @@ class BrandingMiddleware:
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
-        self._cache: OrderedDict[tuple[str, str, bool, bool], tuple[bytes, str]] = OrderedDict()
+        self._cache: OrderedDict[tuple[str, str, str, bool, bool], tuple[bytes, str]] = OrderedDict()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("method") != "GET":
@@ -404,7 +413,18 @@ class BrandingMiddleware:
         source_hash = hashlib.sha256(body).hexdigest()
         content_type = next((v for k, v in start.get("headers", []) if k == b"content-type"), b"").decode("latin-1")
         is_html = content_type.lower().startswith("text/html")
-        key = (source_hash, config.fingerprint, is_html, _is_ui_path(path))
+        javascript = (
+            "javascript" in content_type.lower()
+            or content_type.lower().startswith("text/x-component")
+            or (_is_ui_path(path) and path.endswith(".txt") and content_type.lower().startswith("text/plain"))
+        )
+        key = (
+            source_hash,
+            config.fingerprint,
+            content_type.split(";", 1)[0].strip().lower(),
+            _is_ui_path(path),
+            javascript,
+        )
         cached = self._cache.get(key)
         if cached is not None:
             self._cache.move_to_end(key)
@@ -418,7 +438,7 @@ class BrandingMiddleware:
                 if is_html:
                     text = brand_html_document(text, config, inject_head=_is_ui_path(path))
                 else:
-                    text = brand_text(text, config, javascript="javascript" in content_type.lower())
+                    text = brand_text(text, config, javascript=javascript)
                 new_body = text.encode("utf-8")
                 etag = f'"{hashlib.sha256(new_body).hexdigest()[:32]}"'
             self._cache[key] = (new_body, etag)
@@ -437,3 +457,8 @@ class BrandingMiddleware:
         headers.append((b"content-length", str(len(new_body)).encode("latin-1")))
         await send({"type": "http.response.start", "status": 200, "headers": headers})
         await send({"type": "http.response.body", "body": new_body})
+
+
+def filter_openapi_paths(schema: dict, allowed_routes: list[str]) -> dict:
+    schema["paths"] = {path: spec for path, spec in schema.get("paths", {}).items() if path in allowed_routes}
+    return schema

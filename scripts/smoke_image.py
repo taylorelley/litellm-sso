@@ -109,7 +109,14 @@ general_settings:
         require(status == 200 and b"data:" in body and b"[DONE]" in body, "Streaming completion failed")
         status, _, schema = request(base, "/openapi.json")
         require(status == 200, "OpenAPI failed")
-        info = json.loads(schema)["info"]
+        schema = json.loads(schema)
+        info = schema["info"]
+        if env.get("DOCS_FILTERED") == "True":
+            require("/v1/chat/completions" in schema["paths"], "Filtered docs lost the completion route")
+            require(
+                "/key/generate" not in schema["paths"] and "/policies" not in schema["paths"],
+                "Filtered docs still expose admin or lazy routes",
+            )
         require(info["title"] == env.get("DOCS_TITLE", "LiteLLM API"), "Docs title differs")
         if "DOCS_DESCRIPTION" in env:
             require(info["description"] == env["DOCS_DESCRIPTION"], "Docs description differs")
@@ -141,6 +148,7 @@ def main() -> None:
     parser.add_argument("--logs", type=Path, default=Path("smoke-logs"))
     args = parser.parse_args()
     args.logs.mkdir(parents=True, exist_ok=True)
+    (args.logs / "tested-image-id.txt").unlink(missing_ok=True)
     image_id = docker("image", "inspect", "--format", "{{.Id}}", args.image, capture_output=True).stdout.strip()
     files = [
         line[6:]

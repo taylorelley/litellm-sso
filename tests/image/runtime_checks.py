@@ -44,7 +44,7 @@ class InstalledRuntimeTests(unittest.TestCase):
                 patch.object(ui_sso, "UserRepository", return_value=repository),
             ):
                 if denied:
-                    with self.assertRaises(Exception) as exc:
+                    with self.assertRaises(ui_sso.ProxyException) as exc:
                         asyncio.run(ui_sso._raise_if_sso_exceeds_free_user_limit(False, object()))
                     self.assertEqual(str(exc.exception.code), "403")
                 else:
@@ -54,6 +54,34 @@ class InstalledRuntimeTests(unittest.TestCase):
         with patch.dict(os.environ, {"SSO_FREE_USER_LIMIT": "invalid"}):
             with self.assertRaisesRegex(ValueError, "SSO_FREE_USER_LIMIT"):
                 asyncio.run(ui_sso._raise_if_sso_exceeds_free_user_limit(False, object()))
+
+    def test_sso_unlock_keeps_database_requirement_and_premium_bypass(self):
+        repository = Mock(count_billable_users=AsyncMock(return_value=100))
+        with (
+            patch.dict(os.environ, {"LITELLM_OSS_UNLOCK": "sso"}),
+            patch.object(ui_sso, "UserRepository", return_value=repository),
+        ):
+            os.environ.pop("SSO_FREE_USER_LIMIT", None)
+            asyncio.run(ui_sso._raise_if_sso_exceeds_free_user_limit(False, object()))
+            repository.count_billable_users.assert_not_awaited()
+            with self.assertRaises(ui_sso.ProxyException) as exc:
+                asyncio.run(ui_sso._raise_if_sso_exceeds_free_user_limit(False, None))
+            self.assertEqual(str(exc.exception.code), "403")
+            repository.count_billable_users.assert_not_awaited()
+        with patch.dict(os.environ, {"SSO_FREE_USER_LIMIT": "invalid"}):
+            asyncio.run(ui_sso._raise_if_sso_exceeds_free_user_limit(True, None))
+
+    def test_default_sso_limit_in_installed_code(self):
+        repository = Mock(count_billable_users=AsyncMock(return_value=6))
+        with (
+            patch.dict(os.environ, {"LITELLM_OSS_UNLOCK": ""}),
+            patch.object(ui_sso, "UserRepository", return_value=repository),
+        ):
+            os.environ.pop("SSO_FREE_USER_LIMIT", None)
+            with self.assertRaises(ui_sso.ProxyException) as exc:
+                asyncio.run(ui_sso._raise_if_sso_exceeds_free_user_limit(False, object()))
+            self.assertEqual(str(exc.exception.code), "403")
+            self.assertIn("limit of 5", str(exc.exception))
 
     def test_organization_gate(self):
         with patch.object(proxy_server, "premium_user", False):

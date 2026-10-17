@@ -44,6 +44,24 @@ def main() -> None:
         raise RuntimeError("No built JavaScript assets were exercised by branding")
     print(f"Syntax checked {checked} branded JavaScript assets", flush=True)
 
+    flight_checked = 0
+    for path in ui.rglob("*.txt"):
+        for line in path.read_text().splitlines():
+            if ":" not in line:
+                continue
+            _, payload = line.split(":", 1)
+            try:
+                json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            rewritten = brand_text(payload, config, javascript=True)
+            if rewritten != payload:
+                json.loads(rewritten)
+                flight_checked += 1
+    if config.name and not flight_checked:
+        raise RuntimeError("No built React Flight JSON was exercised by branding")
+    print(f"Validated {flight_checked} branded React Flight JSON records", flush=True)
+
 
 if __name__ == "__main__":
     main()

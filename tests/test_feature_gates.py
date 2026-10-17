@@ -2,8 +2,11 @@
 
 import ast
 import copy
+import difflib
 import os
+import subprocess
 from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -96,18 +99,49 @@ def test_gate_behavior(site, premium, setting, monkeypatch):
         },
     )
 
-    class Baseline(ast.NodeTransformer):
-        def visit_Call(self, node):
-            if isinstance(node.func, ast.Name) and node.func.id == "_premium_or_unlocked":
-                return ast.copy_location(ast.Name(id="premium_user", ctx=ast.Load()), node)
-            if isinstance(node.func, ast.Name) and node.func.id == "_oss_unlocked":
-                return ast.copy_location(ast.Constant(value=enabled), node)
-            return self.generic_visit(node)
-
-    expected = eval(
-        compile(
-            ast.fix_missing_locations(ast.Expression(Baseline().visit(copy.deepcopy(expression)))), "baseline", "eval"
-        ),
-        {"premium_user": True if enabled else premium},
-    )
+    if kind == "_oss_unlocked":
+        expected = enabled if feature == "auto_router" else not enabled
+    else:
+        baseline = original_expression(rel, line)
+        expected = eval(
+            compile(ast.Expression(baseline), "unpatched-upstream", "eval"),
+            {"premium_user": True if enabled else premium},
+        )
     assert actual == expected
+
+
+@lru_cache(maxsize=None)
+def original_expressions(rel: str) -> dict[int, ast.expr]:
+    root = Path(os.environ.get("OSS_UNLOCK_MODULE", "upstream/litellm/proxy/oss_unlock.py")).parents[2].resolve()
+    original = subprocess.check_output(["git", "-C", str(root), "show", f"HEAD:{rel}"], text=True)
+    patched = (root / rel).read_text()
+    tree = ast.parse(original)
+    parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+    predicates = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id == "premium_user" and isinstance(node.ctx, ast.Load):
+            expression = parents[node] if isinstance(parents.get(node), (ast.Compare, ast.UnaryOp)) else node
+            predicates[node.lineno] = expression
+    mapped = {}
+    diff = difflib.SequenceMatcher(None, original.splitlines(), patched.splitlines())
+    for operation, i1, i2, j1, j2 in diff.get_opcodes():
+        if operation == "insert":
+            continue
+        for patched_line in range(j1, j2):
+            original_line = i1 + min(patched_line - j1, i2 - i1 - 1) + 1
+            if original_line in predicates:
+                mapped[patched_line + 1] = predicates[original_line]
+    return mapped
+
+
+def original_expression(rel: str, line: int) -> ast.expr:
+    return original_expressions(rel)[line]
+
+
+def test_gate_oracle_rejects_reversed_comparison(monkeypatch):
+    site = next(site for site in SITES if isinstance(site[4], ast.Compare) and isinstance(site[4].ops[0], ast.IsNot))
+    mutated = list(site)
+    mutated[4] = copy.deepcopy(site[4])
+    mutated[4].ops[0] = ast.Is()
+    with pytest.raises(AssertionError):
+        test_gate_behavior(tuple(mutated), False, "locked", monkeypatch)

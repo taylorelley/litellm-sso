@@ -4,3 +4,11 @@ __pycache__/
 upstream/
 .venv/
 smoke-logs/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+junit.xml
+test-results/
+playwright-report/

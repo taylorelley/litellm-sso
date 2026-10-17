@@ -580,6 +580,27 @@ BRANDING_EDITS = [
 def apply_branding() -> None:
     for rel, old, new in BRANDING_EDITS:
         replace_once(rel, old, new)
+    rel = "litellm/proxy/proxy_server.py"
+    replace_once(
+        rel,
+        "from litellm.proxy.branding import BrandingMiddleware\n",
+        "from litellm.proxy.branding import BrandingMiddleware, filter_openapi_paths\n",
+    )
+    gate(
+        rel,
+        "def custom_openapi():",
+        "return app.openapi_schema",
+        "return filter_openapi_paths(app.openapi_schema, LiteLLMRoutes.openai_routes.value)",
+        after=True,
+        window=200,
+    )
+    gate(
+        rel,
+        'if os.getenv("DOCS_FILTERED", "False") == "True":',
+        "return app.openapi_schema",
+        "return filter_openapi_paths(app.openapi_schema, LiteLLMRoutes.openai_routes.value)",
+        window=500,
+    )
 
 
 def apply_sso() -> None:

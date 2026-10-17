@@ -343,3 +343,60 @@ def test_middleware_large_or_encoded_response_is_unchanged(monkeypatch):
     with TestClient(app) as client:
         for path in ("/ui/large", "/ui/encoded"):
             assert client.get(path).content == b"LiteLLM"
+
+
+def test_filtered_docs_drop_late_added_and_cached_admin_routes():
+    schema = {
+        "info": {"title": "Acme"},
+        "paths": {"/v1/chat/completions": {"post": {}}, "/key/generate": {"post": {}}, "/policies": {"get": {}}},
+    }
+    result = branding.filter_openapi_paths(schema, ["/v1/chat/completions"])
+    assert result["paths"] == {"/v1/chat/completions": {"post": {}}}
+    assert result["info"] == {"title": "Acme"}
+    result["paths"]["/policies"] = {"get": {}}
+    assert "/policies" not in branding.filter_openapi_paths(result, ["/v1/chat/completions"])["paths"]
+
+
+def test_custom_title_and_urls_are_not_branded_twice(monkeypatch):
+    config = cfg(monkeypatch, BRAND_NAME="LiteLLM Internal", BRAND_DOCS_URL="https://wiki.example/LiteLLM")
+    text = '<title>LiteLLM Dashboard</title><a href="https://docs.litellm.ai/docs">Docs</a><p>LiteLLM</p>'
+    assert branding.brand_text(text, config, html=True) == (
+        '<title>LiteLLM Internal Dashboard</title><a href="https://wiki.example/LiteLLM">Docs</a><p>LiteLLM Internal</p>'
+    )
+
+
+@pytest.mark.parametrize("first", ["/ui/notes", "/ui/asset.js"])
+def test_plain_text_cache_cannot_supply_unescaped_javascript(monkeypatch, first):
+    import subprocess
+
+    cfg(monkeypatch, BRAND_NAME='Acme "AI"')
+
+    async def response(request):
+        kind = "application/javascript" if request.url.path.endswith(".js") else "text/plain"
+        return Response('console.log("LiteLLM")', media_type=kind)
+
+    app = Starlette(routes=[Route("/ui/notes", response), Route("/ui/asset.js", response)])
+    app.add_middleware(branding.BrandingMiddleware)
+    with TestClient(app) as client:
+        client.get(first)
+        plain = client.get("/ui/notes").text
+        script = client.get("/ui/asset.js").text
+    assert 'Acme "AI"' in plain
+    result = subprocess.run(["node", "-e", script], text=True, capture_output=True, check=True)
+    assert result.stdout.strip() == 'Acme "AI"'
+
+
+@pytest.mark.parametrize("path,kind", [("/ui/flight", "text/x-component"), ("/ui/index.txt", "text/plain")])
+def test_branded_react_flight_stays_valid_json(monkeypatch, path, kind):
+    import json
+
+    cfg(monkeypatch, BRAND_NAME='Acme "AI"')
+
+    async def response(request):
+        return Response('1c:{"title":"LiteLLM Dashboard"}', media_type=kind)
+
+    app = Starlette(routes=[Route(path, response)])
+    app.add_middleware(branding.BrandingMiddleware)
+    with TestClient(app) as client:
+        payload = client.get(path).text.split(":", 1)[1]
+    assert json.loads(payload) == {"title": 'Acme "AI" Dashboard'}

@@ -65,7 +65,7 @@ UI theme variables you can set with `BRAND_CSS_VARS` include `background`, `fore
 
 ## 3. Licence-gated features in MIT code
 
-The patch adds `litellm/proxy/oss_unlock.py` and makes each licence check in MIT-licensed code opt-in per feature:
+The patch adds `litellm/proxy/oss_unlock.py` and makes the audited licence checks in MIT-licensed code opt-in per feature:
 
 ```
 LITELLM_OSS_UNLOCK=jwt_auth,audit_logs,priority_reservation,ui   # specific features
@@ -187,7 +187,7 @@ OSS_UNLOCK_MODULE=upstream/litellm/proxy/oss_unlock.py \
 python -m pytest -q tests
 ```
 
-Unit tests exercise all audited gate sites with locked, selective, unrelated and all-feature settings, plus premium/false/unknown states. They cover SSO limits, defaults and precedence, every branding setting, email footers, JavaScript escaping, middleware behavior, patch failure handling, and README coverage. Node.js is needed for JavaScript regression tests.
+Unit tests exercise all audited gate sites with locked, selective, unrelated and all-feature settings, plus premium/false/unknown states. They cover SSO limits, defaults and precedence, every branding setting, email footers, JavaScript escaping, middleware behavior, patch failure handling, and README coverage. Node.js is needed for JavaScript regression tests. Keep the upstream directory as a Git checkout: gate comparisons use its unpatched `HEAD` as the expected behavior.
 
 The candidate-image tests verify the installed bytes and import every patched module, parse rewritten JavaScript from the actual built UI, and run installed SSO, organization, audit and shared-gate checks. HTTP smoke tests start the stock, SSO-enabled and all-features-plus-branding configurations. They check readiness, liveness, authentication, model listing, a mock completion, SSE streaming, API docs, UI, compression and asset serving. No external model credentials are needed.
 
@@ -195,6 +195,6 @@ The candidate-image tests verify the installed bytes and import every patched mo
 python scripts/smoke_image.py litellm-sso:candidate --upstream upstream --logs smoke-logs
 ```
 
-Test tooling variables are `BRANDING_MODULE` (default `upstream/litellm/proxy/branding.py`) and `OSS_UNLOCK_MODULE` (default `upstream/litellm/proxy/oss_unlock.py`). They select files for unit tests and are not image runtime settings. CI's `REQUESTED_REF` and `IMAGE_REPOSITORY` are internal workflow values. The smoke harness uses upstream's `LITELLM_LOCAL_MODEL_COST_MAP=True` to avoid fetching prices.
+Test tooling variables are `BRANDING_MODULE` (default `upstream/litellm/proxy/branding.py`) and `OSS_UNLOCK_MODULE` (default `upstream/litellm/proxy/oss_unlock.py`). They select files for unit tests and are not image runtime settings. CI's `REQUESTED_REF`, `IMAGE_REPOSITORY`, `TESTED_IMAGE_ID` and `IMAGE_TAGS` are internal workflow values, not proxy settings. The smoke harness uses upstream's `LITELLM_LOCAL_MODEL_COST_MAP=True` to avoid fetching prices.
 
 These checks reduce release risk. They do not prove every upstream feature or deployment is correct. Live Authentik/OIDC login, real database migrations, production secret managers, external logging destinations and real model providers still need environment-specific acceptance tests. Keep a known-good immutable image tag or digest for rollback. Protect the default branch with the unit-test and image-smoke checks required before merging.
