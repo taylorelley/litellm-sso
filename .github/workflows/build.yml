@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Pinned so the published package name does not follow repository renames.
+  IMAGE_NAME: litellm-unlocked
+
 jobs:
   validate:
     strategy:
@@ -36,7 +40,7 @@ jobs:
         id: ref
         env:
           REQUESTED_REF: ${{ inputs.upstream_ref }}
-          IMAGE_REPOSITORY: ${{ github.repository }}
+          IMAGE_REPOSITORY: ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
         run: |
           python - <<'PY'
           import hashlib, os, re
